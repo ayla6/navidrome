@@ -599,7 +599,7 @@ func setViperDefaults() {
 	viper.SetDefault("coverartformat", "webp")
 	viper.SetDefault("coverartminquality", 75)
 	viper.SetDefault("coverartmaxquality", 95)
-	viper.SetDefault("artistartpriority", "artist.*, album/artist.*, external")
+	viper.SetDefault("artistartpriority", "artistinfo, artist.*, album/artist.*, external")
 	viper.SetDefault("lyricspriority", ".lrc,.txt,embedded")
 	viper.SetDefault("enablegravatar", false)
 	viper.SetDefault("enablefavourites", true)

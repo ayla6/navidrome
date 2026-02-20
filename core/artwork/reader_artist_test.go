@@ -50,7 +50,7 @@ var _ = Describe("artistArtworkReader", func() {
 
 		When("no albums provided", func() {
 			It("returns empty and zero time", func() {
-				folder, upd, err := loadArtistFolder(ctx, fds, model.Albums{}, []string{"/dummy/path"})
+				folder, _, upd, err := loadArtistFolder(ctx, fds, model.Albums{}, []string{"/dummy/path"})
 				Expect(err).ToNot(HaveOccurred())
 				Expect(folder).To(BeEmpty())
 				Expect(upd).To(BeZero())
@@ -62,7 +62,7 @@ var _ = Describe("artistArtworkReader", func() {
 				paths = []string{
 					filepath.FromSlash("/music/artist/album1"),
 				}
-				folder, upd, err := loadArtistFolder(ctx, fds, albums, paths)
+				folder, _, upd, err := loadArtistFolder(ctx, fds, albums, paths)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(folder).To(Equal("/music/artist"))
 				Expect(upd).To(Equal(expectedUpdTime))
@@ -75,7 +75,7 @@ var _ = Describe("artistArtworkReader", func() {
 					filepath.FromSlash("/music/library/artist/one"),
 					filepath.FromSlash("/music/library/artist/two"),
 				}
-				folder, upd, err := loadArtistFolder(ctx, fds, albums, paths)
+				folder, _, upd, err := loadArtistFolder(ctx, fds, albums, paths)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(folder).To(Equal(filepath.FromSlash("/music/library/artist")))
 				Expect(upd).To(Equal(expectedUpdTime))
@@ -88,7 +88,7 @@ var _ = Describe("artistArtworkReader", func() {
 					filepath.FromSlash("/music/artist/album1"),
 					filepath.FromSlash("/music/artist/album2"),
 				}
-				folder, upd, err := loadArtistFolder(ctx, fds, albums, paths)
+				folder, _, upd, err := loadArtistFolder(ctx, fds, albums, paths)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(folder).To(Equal("/music/artist"))
 				Expect(upd).To(Equal(expectedUpdTime))
@@ -102,7 +102,7 @@ var _ = Describe("artistArtworkReader", func() {
 					filepath.FromSlash("/music/artist/album2"),
 				}
 				repo.err = errors.New("fake error")
-				folder, upd, err := loadArtistFolder(ctx, fds, albums, paths)
+				folder, _, upd, err := loadArtistFolder(ctx, fds, albums, paths)
 				Expect(err).To(MatchError(ContainSubstring("fake error")))
 				// Folder and time are empty on error.
 				Expect(folder).To(BeEmpty())
