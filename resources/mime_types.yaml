@@ -31,11 +31,13 @@ types:
   .mka: audio/x-matroska 
 
 # Image
+  .png: image/png
+  .avif: image/avif
+  .webp: image/webp
+  .jxl: image/jxl
   .gif: image/gif
   .jpg: image/jpeg
   .jpeg: image/jpeg
-  .webp: image/webp
-  .png: image/png
   .bmp: image/bmp
 
 # List of audio formats that are considered lossless

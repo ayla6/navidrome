@@ -3,10 +3,15 @@ package artwork
 import (
 	"context"
 	"errors"
+	_ "golang.org/x/image/webp"
 	_ "image/gif"
+	_ "image/jpeg"
+	_ "image/png"
 	"io"
 	"time"
 
+	_ "github.com/gen2brain/avif"
+	_ "github.com/gen2brain/jpegxl"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/external"
 	"github.com/navidrome/navidrome/core/ffmpeg"
@@ -14,7 +19,6 @@ import (
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/resources"
 	"github.com/navidrome/navidrome/utils/cache"
-	_ "golang.org/x/image/webp"
 )
 
 var ErrUnavailable = errors.New("artwork unavailable")
