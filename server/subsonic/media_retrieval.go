@@ -1,6 +1,7 @@
 package subsonic
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"io"
@@ -83,6 +84,34 @@ func (api *Router) GetCoverArt(w http.ResponseWriter, r *http.Request) (*respons
 	defer imgReader.Close()
 	w.Header().Set("cache-control", "public, max-age=315360000")
 	w.Header().Set("last-modified", lastUpdate.Format(time.RFC1123))
+
+	sniffBuf := make([]byte, 512)
+	// Use ReadFull so the buffer is as populated as possible for accurate sniffing.
+	// ErrUnexpectedEOF is fine here — it just means the file is smaller than 512 bytes.
+	n, err := io.ReadFull(imgReader, sniffBuf)
+	if err != nil && !errors.Is(err, io.ErrUnexpectedEOF) && !errors.Is(err, io.EOF) {
+		log.Error(r, "Error reading image for content sniffing", err)
+		return nil, err
+	}
+
+	if n > 0 {
+		contentType := http.DetectContentType(sniffBuf[:n])
+
+		if contentType == "application/octet-stream" {
+			switch {
+			case bytes.Contains(sniffBuf[:n], []byte("ftypavif")),
+				bytes.Contains(sniffBuf[:n], []byte("ftypavis")):
+				contentType = "image/avif"
+
+			case bytes.HasPrefix(sniffBuf[:n], []byte("\x00\x00\x00\x0c\x4a\x58\x4c\x20\x0d\x0a\x87\x0a")),
+				bytes.HasPrefix(sniffBuf[:n], []byte("\xff\x0a")):
+				contentType = "image/jxl"
+			}
+		}
+
+		w.Header().Set("Content-Type", contentType)
+		_, _ = w.Write(sniffBuf[:n])
+	}
 
 	cnt, err := io.Copy(w, imgReader)
 	if err != nil {
