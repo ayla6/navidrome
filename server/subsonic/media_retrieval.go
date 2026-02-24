@@ -66,7 +66,7 @@ func (api *Router) GetCoverArt(w http.ResponseWriter, r *http.Request) (*respons
 
 	p := req.Params(r)
 	id, _ := p.String("id")
-	size := p.IntOr("size", 0)
+	size := p.IntOr("size", conf.Server.CoverArtMaxResolution)
 	square := p.BoolOr("square", false)
 
 	imgReader, lastUpdate, err := api.artwork.GetOrPlaceholder(ctx, id, size, square)

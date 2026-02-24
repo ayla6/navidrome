@@ -82,6 +82,7 @@ require (
 	dario.cat/mergo v1.0.2 // indirect
 	github.com/Masterminds/semver/v3 v3.4.0 // indirect
 	github.com/atombender/go-jsonschema v0.20.0 // indirect
+	github.com/ayla6/avif v0.0.0-20260224164340-62ee604da632 // indirect
 	github.com/aymerick/douceur v0.2.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/reflex v0.3.1 // indirect
@@ -90,9 +91,8 @@ require (
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.4.0 // indirect
 	github.com/dylibso/observe-sdk/go v0.0.0-20240828172851-9145d8ad07e1 // indirect
-	github.com/ebitengine/purego v0.9.1 // indirect
+	github.com/ebitengine/purego v0.10.0 // indirect
 	github.com/fsnotify/fsnotify v1.9.0 // indirect
-	github.com/gen2brain/avif v0.4.4 // indirect
 	github.com/gen2brain/jpegxl v0.4.5 // indirect
 	github.com/gen2brain/webp v0.5.5 // indirect
 	github.com/go-logr/logr v1.4.3 // indirect

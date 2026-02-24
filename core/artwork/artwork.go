@@ -10,7 +10,7 @@ import (
 	"io"
 	"time"
 
-	_ "github.com/gen2brain/avif"
+	_ "github.com/ayla6/avif"
 	_ "github.com/gen2brain/jpegxl"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/external"

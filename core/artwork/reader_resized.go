@@ -13,9 +13,9 @@ import (
 	"io"
 	"time"
 
+	"github.com/ayla6/avif"
+	_ "github.com/ayla6/avif"
 	"github.com/disintegration/imaging"
-	"github.com/gen2brain/avif"
-	_ "github.com/gen2brain/avif"
 	"github.com/gen2brain/jpegxl"
 	_ "github.com/gen2brain/jpegxl"
 	"github.com/gen2brain/webp"
@@ -216,7 +216,9 @@ func resizeImage(reader io.Reader, size int, square bool) (io.Reader, int, error
 		case "jxl":
 			err = jpegxl.Encode(buf, resized, jpegxl.Options{Quality: q})
 		case "avif":
-			err = avif.Encode(buf, resized, avif.Options{Quality: q})
+			err = avif.Encode(buf, resized, avif.Options{Quality: q, Advanced: map[string]string{
+				"tune": "iq",
+			}})
 		default: // png and jpeg
 			err = jpeg.Encode(buf, resized, &jpeg.Options{Quality: q})
 		}
