@@ -3,12 +3,13 @@ package artwork
 import (
 	"context"
 	"errors"
-	_ "golang.org/x/image/webp"
 	_ "image/gif"
 	_ "image/jpeg"
 	_ "image/png"
 	"io"
 	"time"
+
+	_ "golang.org/x/image/webp"
 
 	_ "github.com/ayla6/avif"
 	_ "github.com/gen2brain/jpegxl"

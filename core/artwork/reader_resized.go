@@ -6,12 +6,13 @@ import (
 	"context"
 	"encoding/binary"
 	"fmt"
-	_ "golang.org/x/image/webp"
 	"image"
 	"image/jpeg"
 	"image/png"
 	"io"
 	"time"
+
+	_ "golang.org/x/image/webp"
 
 	"github.com/ayla6/avif"
 	_ "github.com/ayla6/avif"
