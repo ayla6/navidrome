@@ -350,7 +350,6 @@
         "createdAt": "Geinstalleerd",
         "configKey": "Sleutel",
         "configValue": "Waarde",
-        "allUsers": "Alle gebruikers toelaten",
         "selectedUsers": "Geselecteerde gebruikers",
         "allLibraries": "Alle bibliotheken toestaan",
         "selectedLibraries": "Geselecteerde bibliotheken"
@@ -389,7 +388,6 @@
         "configHelp": "",
         "clickPermissions": "Klik op permissie voor details",
         "noConfig": "Geen configuratie ingesteld",
-        "allUsersHelp": "",
         "noUsers": "Geen gebruikers geselecteerd",
         "permissionReason": "Reden",
         "usersRequired": "",

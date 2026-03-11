@@ -352,7 +352,6 @@
         "createdAt": "安裝於",
         "configKey": "鍵",
         "configValue": "值",
-        "allUsers": "允許所有使用者",
         "selectedUsers": "選定的使用者",
         "allLibraries": "允許所有媒體庫",
         "selectedLibraries": "選定的媒體庫"
@@ -393,7 +392,6 @@
         "schemaRenderError": "無法顯示設定表單。插件的 schema 可能無效。",
         "clickPermissions": "點擊權限以查看詳細資訊",
         "noConfig": "無設定",
-        "allUsersHelp": "啟用後，插件將可存取所有使用者，包含未來建立的使用者。",
         "noUsers": "未選擇使用者",
         "permissionReason": "原因",
         "usersRequired": "此插件需要存取使用者資訊。請選擇插件可存取的使用者，或啟用「允許所有使用者」。",

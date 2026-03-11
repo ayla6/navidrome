@@ -350,7 +350,6 @@
         "createdAt": "Instal·lat",
         "configKey": "Clau",
         "configValue": "Valor",
-        "allUsers": "Permet tots els usuaris",
         "selectedUsers": "Usuaris seleccionats",
         "allLibraries": "Permet totes les llibreries",
         "selectedLibraries": "Biblioteques seleccionades"
@@ -389,7 +388,6 @@
         "configHelp": "Configureu el controlador utilitzant parelles clau-valor. Deixeu-ho buit si el controlador no requereix cap configuració.",
         "clickPermissions": "Feu clic en un permís per veure’n els detalls",
         "noConfig": "No s'ha establert cap configuració",
-        "allUsersHelp": "Quan està activat, el controlador té accés a tots els usuaris, inclosos els creats a posteriori.",
         "noUsers": "No s'ha seleccionat cap usuari",
         "permissionReason": "Motiu",
         "usersRequired": "Aquest controlador necessita accedir a la informació de la biblioteca. Selecciona a quines biblioteques pot accedir o activa «Permet tots els usuaris».",

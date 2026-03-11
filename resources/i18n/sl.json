@@ -350,7 +350,6 @@
         "createdAt": "Inštalirano",
         "configKey": "Ključ",
         "configValue": "Vrednost",
-        "allUsers": "Dovoli vsem uporabnikom",
         "selectedUsers": "Izbrani uporabniki",
         "allLibraries": "Dovoli vse knjižnice",
         "selectedLibraries": "Izbrane knjižnice"
@@ -389,7 +388,6 @@
         "configHelp": "Konfiguriraj vtičnik z uporabo key-value parov. Pusti prazno, če vtičnik ne potrebuje konfiguracije.",
         "clickPermissions": "Klikni za dovoljenje o podrobnostih",
         "noConfig": "Konfiguracija ni nastavljena",
-        "allUsersHelp": "Ko vključeno, bo vtičnik imel dostop do vseh uporabnikov, tudi prihodnjih.",
         "noUsers": "Uporabniki niso izbrani",
         "permissionReason": "Razlog",
         "usersRequired": "Vtičnik potrebuje dostop do uporabnikovih informacij. Izberi uporabnike ali vključi dostop vsem uporabnikom.",

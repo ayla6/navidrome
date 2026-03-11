@@ -350,7 +350,6 @@
         "createdAt": "Installeret",
         "configKey": "Nøgle",
         "configValue": "Værdi",
-        "allUsers": "Tillad alle brugere",
         "selectedUsers": "Valgte brugere",
         "allLibraries": "Tillad alle biblioteker",
         "selectedLibraries": "Valgte biblioteker"
@@ -389,7 +388,6 @@
         "configHelp": "Konfigurér pluginet med nøgle-værdi-par. Lad stå tomt, hvis pluginet ikke kræver konfiguration.",
         "clickPermissions": "Klik på en tilladelse for detaljer",
         "noConfig": "Ingen konfiguration angivet",
-        "allUsersHelp": "Når aktiveret, vil pluginet have adgang til alle brugere, inklusiv dem der oprettes i fremtiden.",
         "noUsers": "Ingen brugere valgt",
         "permissionReason": "Årsag",
         "usersRequired": "Dette plugin kræver adgang til brugeroplysninger. Vælg hvilke brugere pluginet kan tilgå, eller aktivér 'Tillad alle brugere'.",

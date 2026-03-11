@@ -350,7 +350,6 @@
         "createdAt": "",
         "configKey": "",
         "configValue": "",
-        "allUsers": "",
         "selectedUsers": "",
         "allLibraries": "",
         "selectedLibraries": ""
@@ -389,7 +388,6 @@
         "configHelp": "",
         "clickPermissions": "",
         "noConfig": "",
-        "allUsersHelp": "",
         "noUsers": "",
         "permissionReason": "",
         "usersRequired": "",

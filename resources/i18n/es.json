@@ -350,7 +350,6 @@
         "createdAt": "Instalado",
         "configKey": "Clave",
         "configValue": "Valor",
-        "allUsers": "Permitir todos los usuarios",
         "selectedUsers": "Usuarios seleccionados",
         "allLibraries": "Permitir todas las bibliotecas",
         "selectedLibraries": "Bibliotecas seleccionadas"
@@ -389,7 +388,6 @@
         "configHelp": "Configura el plugin utilizando pares de clave-valor. Déjalo en blanco si el plugin no requiere configuración.",
         "clickPermissions": "Haz clic en un permiso para ver los detalles",
         "noConfig": "No hay configuración establecida",
-        "allUsersHelp": "Cuando se active, el plugin tendrá acceso a todos los usuarios, incluidos los que se creen en el futuro.",
         "noUsers": "Ningún usuario seleccionado",
         "permissionReason": "Razón",
         "usersRequired": "Este plugin requiere acceso a la información de los usuarios. Selecciona a qué usuarios puede acceder el plugin, o activa 'Permitir todos los usuarios'.",

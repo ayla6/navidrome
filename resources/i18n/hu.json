@@ -347,7 +347,6 @@
         "createdAt": "Telepítve",
         "configKey": "Kulcs",
         "configValue": "Érték",
-        "allUsers": "Összes felhasználó engedélyezése",
         "selectedUsers": "Kiválasztott felhasználók engedélyezése",
         "allLibraries": "Összes könyvtár engedélyezése",
         "selectedLibraries": "Kiválasztott könyvtárak engedélyezése"
@@ -388,7 +387,6 @@
         "schemaRenderError": "Nem sikerült megjeleníteni a konfigurációs űrlapot. A bővítmény sémája érvénytelen lehet.",
         "clickPermissions": "Kattints egy engedélyre a részletekért",
         "noConfig": "Nincs konfiguráció beállítva",
-        "allUsersHelp": "Engedélyezés esetén ez a kiegészítő hozzá fog férni minden jelenlegi és jövőben létrehozott felhasználóhoz.",
         "noUsers": "Nincsenek kiválasztott felhasználók",
         "permissionReason": "Indok",
         "usersRequired": "Ez a kiegészítő hozzáférést kér felhasználói információkhoz. Válaszd ki, melyik felhasználókat érheti el, vagy az 'Összes felhasználó engedélyezése' opciót.",

@@ -350,7 +350,6 @@
         "createdAt": "Zainstalowana",
         "configKey": "Klucz",
         "configValue": "Wartość",
-        "allUsers": "Zezwalaj wszystkim użytkownikom",
         "selectedUsers": "Wybrani użytkownicy",
         "allLibraries": "Zezwalaj dla wszystkich bibliotek",
         "selectedLibraries": "Wybrane biblioteki"
@@ -389,7 +388,6 @@
         "configHelp": "Użyj par klucz-wartość, aby skonfigurować wtyczkę. Pozostaw puste, jeśli wtyczka nie wymaga konfiguracji.",
         "clickPermissions": "Kliknij uprawnienie, aby uzyskać szczegółowe informacje",
         "noConfig": "Nie wybrano konfiguracji",
-        "allUsersHelp": "Po włączeniu wtyczka będzie miała dostęp do wszystkich użytkowników, także tych utworzonych w przyszłości.",
         "noUsers": "Nie wybrano użytkowników",
         "permissionReason": "Powód",
         "usersRequired": "Ta wtyczka wymaga dostępu do informacji o użytkowniku. Wybierz użytkowników, do których wtyczka ma mieć dostęp, lub włącz opcję „Zezwól wszystkim użytkownikom”.",

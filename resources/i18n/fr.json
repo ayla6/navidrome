@@ -350,7 +350,6 @@
         "createdAt": "Installée",
         "configKey": "Clef",
         "configValue": "Valeur",
-        "allUsers": "Autoriser tous les utilisateur·rices",
         "selectedUsers": "Utilisateur·rices sélectionné.e.s",
         "allLibraries": "Autoriser toutes les bibliothèques",
         "selectedLibraries": "Bibliothèques sélectionnées"
@@ -389,7 +388,6 @@
         "configHelp": "Configurer l'extension en utilisant des paires clef/valeurs. Laisser vide si l'extension ne requiert aucune configuration.",
         "clickPermissions": "Cliquer sur une permission pour plus de détails",
         "noConfig": "Aucune configuration",
-        "allUsersHelp": "Quand sélectionnée, l'extension aura accès à l'ensemble des utilisateur·rices, y compris ceux créé.e.s dans le future.",
         "noUsers": "Aucun.e utilisateur·rice sélectionné.e",
         "permissionReason": "Raison",
         "usersRequired": "Cette extension nécessite un accès aux informations utilisateurs. Sélectionnez les utilisateur·rices autorisé.e.s ou sélectionnez 'Tout autoriser'.",

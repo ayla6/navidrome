@@ -352,7 +352,6 @@
         "createdAt": "Instalatuta",
         "configKey": "Gakoa",
         "configValue": "Balioa",
-        "allUsers": "Baimendu erabiltzaile guztiak",
         "selectedUsers": "Hautatutako erabiltzaileak",
         "allLibraries": "Baimendu liburutegi guztiak",
         "selectedLibraries": "Hautatutako liburutegiak"
@@ -393,7 +392,6 @@
         "schemaRenderError": "Ezin izan da konfigurazioaren formularioa bihurtu. Litekeena da pluginaren eskema baliozkoa ez izatea.",
         "clickPermissions": "Sakatu baimen batean xehetasunetarako",
         "noConfig": "Ez da konfiguraziorik ezarri",
-        "allUsersHelp": "Gaituta dagoenean, pluginak erabiltzaile guztiak atzitu ditzazke, baita etorkizunean sortuko direnak ere.",
         "noUsers": "Ez da erabiltzailerik hautatu",
         "permissionReason": "Arrazoia",
         "usersRequired": "Plugin honek erabiltzaileen informaziora sarbidea behar du. Hautatu zein erabiltzaile atzitu dezakeen pluginak, edo gaitu 'Baimendu erabiltzaile guztiak'.",
@@ -590,7 +588,7 @@
     "shareSuccess": "URLa arbelera kopiatu da: %{url}",
     "shareFailure": "Errorea %{url} URLa arbelera kopiatzean",
     "downloadDialogTitle": "Deskargatu '%{name}' %{resource}, (%{size})",
-    "downloadOriginalFormat": "Deskargatu jatorrizko formatua"    
+    "downloadOriginalFormat": "Deskargatu jatorrizko formatua"
   },
   "menu": {
     "library": "Liburutegia",

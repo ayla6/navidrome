@@ -350,7 +350,6 @@
         "createdAt": "Terinstal",
         "configKey": "Key",
         "configValue": "Value",
-        "allUsers": "Izinkan semua pengguna",
         "selectedUsers": "Pengguna yang dipilih",
         "allLibraries": "Izinkan semua pustaka",
         "selectedLibraries": "Pustaka dipilih"
@@ -389,7 +388,6 @@
         "configHelp": "Konfigurasikan plugin menggunakan key-value pairs. Biarkan kosong jika plugin tidak membutuhkan konfigurasi.",
         "clickPermissions": "Klik perizinan untuk detail",
         "noConfig": "Konfigurasi tidak diatur",
-        "allUsersHelp": "Ketika diaktifkan, plugin akan mengakses untuk semua pengguna, termasuk  yang akan dibuat di masa depan.",
         "noUsers": "Tidak ada pengguna yang dipilih",
         "permissionReason": "Alasan",
         "usersRequired": "Plugin ini membutuhkan akses ke informasi pengguna. Pilih pengguna yang bisa mengakses plugin, atau aktifkan 'Izinkan semua pengguna'.",

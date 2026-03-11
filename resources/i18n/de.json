@@ -350,7 +350,6 @@
         "createdAt": "Installiert",
         "configKey": "Schlüssel",
         "configValue": "Wert",
-        "allUsers": "Alle Benutzer",
         "selectedUsers": "Ausgewählte Benutzer",
         "allLibraries": "Alle Bibliotheken",
         "selectedLibraries": "Ausgewählte Bibliotheken"
@@ -389,7 +388,6 @@
         "configHelp": "Plugin mit Schlüssel-Werte Paaren konfigurieren. Leer lassen wenn das Plugin keine Konfiguration benötigt.",
         "clickPermissions": "Berechtigung anklicken für mehr Details",
         "noConfig": "Keine Konfiguration gesetzt",
-        "allUsersHelp": "Wenn aktiviert, erhält das Plugin Zugriff auf alle Benutzer, inklusive solcher, die in Zukunft erstellt werden.",
         "noUsers": "Keine Benutzer ausgewählt",
         "permissionReason": "Begründung",
         "usersRequired": "Dieses Plugin benötigt Zugriff auf Benutzerinformationen. Wähle aus, auf welche Nutzer das Plugin zugreifen darf oder wähle 'Alle Benutzer'.",

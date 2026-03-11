@@ -352,7 +352,6 @@
         "createdAt": "安装于",
         "configKey": "键",
         "configValue": "值",
-        "allUsers": "允许所有用户",
         "selectedUsers": "指定用户",
         "allLibraries": "允许所有媒体库",
         "selectedLibraries": "指定媒体库"
@@ -393,7 +392,6 @@
         "schemaRenderError": "无法渲染配置表单。此插件的 schema 定义可能无效。",
         "clickPermissions": "点击权限以查看详情",
         "noConfig": "未设定配置",
-        "allUsersHelp": "启用时，插件将可以访问所有用户，包括将来创建的。",
         "noUsers": "未选择用户",
         "permissionReason": "原因",
         "usersRequired": "此插件需要访问用户信息。请选择允许此插件访问的用户, 或启用 '允许所有用户'。",

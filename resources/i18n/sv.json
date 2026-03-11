@@ -350,7 +350,6 @@
         "createdAt": "Installerad",
         "configKey": "Nyckel",
         "configValue": "Värde",
-        "allUsers": "Tillåt alla användare",
         "selectedUsers": "Valda användare",
         "allLibraries": "Tillåt alla bibliotek",
         "selectedLibraries": "Valda bibliotek"
@@ -389,7 +388,6 @@
         "configHelp": "Konfigurera tillägget med nyckel–värde-par. Lämna tomt om tillägget inte kräver någon konfiguration.",
         "clickPermissions": "Klicka på en behörighet för mer information",
         "noConfig": "Ingen konfiguration angiven",
-        "allUsersHelp": "När den är aktiverad får tillägget tillgång till alla användare, inklusive de som skapas i framtiden.",
         "noUsers": "Inga användare valda",
         "permissionReason": "Orsak",
         "usersRequired": "Detta tillägg kräver åtkomst till användarinformation. Välj vilka användare insticksprogrammet ska ha åtkomst till, eller aktivera 'Tillåt alla användare'.",

@@ -350,7 +350,6 @@
         "createdAt": "Instalado",
         "configKey": "Clave",
         "configValue": "Valor",
-        "allUsers": "Para todas as usuarias",
         "selectedUsers": "Usuarias seleccionadas",
         "allLibraries": "Permitir todas as bibliotecas",
         "selectedLibraries": "Selecciona bibliotecas"
@@ -389,7 +388,6 @@
         "configHelp": "Configura o complemento usando pares clave-valor. Deixa baleiro se o complemento non require configuración.",
         "clickPermissions": "Preme nun permiso para ver detalles",
         "noConfig": "Sen configuración establecida",
-        "allUsersHelp": "Ao activalo, o complemento terá acceso a todas as usuarias, incluíndo aquelas que se creen no futuro.",
         "noUsers": "Sen usuarias seleccionadas",
         "permissionReason": "Motivo",
         "usersRequired": "O complemento precisa acceso á información sobre a usuaria. Selecciona as usuarias ás que pode acceder, ou activa 'Todas as usuarias'.",

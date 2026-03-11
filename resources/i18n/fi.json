@@ -350,7 +350,6 @@
         "createdAt": "Asennettu",
         "configKey": "Avain",
         "configValue": "Arvo",
-        "allUsers": "Salli kaikki käyttäjät",
         "selectedUsers": "Valitut käyttäjät",
         "allLibraries": "Salli kaikki kirjastot",
         "selectedLibraries": "Valitut kirjastot"
@@ -389,7 +388,6 @@
         "configHelp": "Määritä lisäosa avain-arvo-parien avulla. Jätä tyhjäksi, jos lisäosa ei vaadi määrityksiä.",
         "clickPermissions": "Napsauta käyttöoikeutta saadaksesi lisätietoja",
         "noConfig": "Ei määritettyjä asetuksia",
-        "allUsersHelp": "Kun tämä on käytössä, laajennuksella on pääsy kaikkiin käyttäjiin, myös tulevaisuudessa luotaviin.",
         "noUsers": "Ei valittuja käyttäjiä",
         "permissionReason": "Syy",
         "usersRequired": "Tämä laajennus vaatii pääsyn käyttäjätietoihin. Valitse käyttäjät, joihin laajennus voi päästä, tai ota käyttöön 'Salli kaikki käyttäjät'.",
