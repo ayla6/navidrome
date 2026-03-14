@@ -1,22 +1,23 @@
 package artwork
 
 import (
-	"bufio"
 	"bytes"
 	"context"
 	"encoding/binary"
 	"fmt"
 	"image"
+	"image/draw"
 	"image/jpeg"
 	"image/png"
 	"io"
+	"sync"
 	"time"
 
+	xdraw "golang.org/x/image/draw"
 	_ "golang.org/x/image/webp"
 
 	"github.com/ayla6/avif"
 	_ "github.com/ayla6/avif"
-	"github.com/disintegration/imaging"
 	"github.com/gen2brain/jpegxl"
 	_ "github.com/gen2brain/jpegxl"
 	"github.com/gen2brain/webp"
@@ -24,6 +25,12 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 )
+
+var bufPool = sync.Pool{
+	New: func() any {
+		return new(bytes.Buffer)
+	},
+}
 
 type resizedArtworkReader struct {
 	artID      model.ArtworkID
@@ -40,7 +47,6 @@ func resizedFromOriginal(ctx context.Context, a *artwork, artID model.ArtworkID,
 	r.size = size
 	r.square = square
 
-	// Get lastUpdated and cacheKey from original artwork
 	original, err := a.getArtworkReader(ctx, artID, 0, false)
 	if err != nil {
 		return nil, err
@@ -63,14 +69,13 @@ func (a *resizedArtworkReader) LastUpdated() time.Time {
 }
 
 func (a *resizedArtworkReader) Reader(ctx context.Context) (io.ReadCloser, string, error) {
-	// Get artwork in original size, possibly from cache
 	orig, _, err := a.a.Get(ctx, a.artID, 0, false)
 	if err != nil {
 		return nil, "", err
 	}
 	defer orig.Close()
 
-	resized, origSize, err := resizeImage(orig, a.size, a.square)
+	resized, origSize, err := a.resizeImage(ctx, orig)
 	if resized == nil {
 		log.Trace(ctx, "Image smaller than requested size", "artID", a.artID, "original", origSize, "resized", a.size, "square", a.square)
 	} else {
@@ -80,11 +85,36 @@ func (a *resizedArtworkReader) Reader(ctx context.Context) (io.ReadCloser, strin
 		log.Warn(ctx, "Could not resize image. Will return image as is", "artID", a.artID, "size", a.size, "square", a.square, err)
 	}
 	if err != nil || resized == nil {
-		// if we couldn't resize the image, return the original
 		orig, _, err = a.a.Get(ctx, a.artID, 0, false)
 		return orig, "", err
 	}
+	if rc, ok := resized.(io.ReadCloser); ok {
+		return rc, fmt.Sprintf("%s@%d", a.artID, a.size), nil
+	}
 	return io.NopCloser(resized), fmt.Sprintf("%s@%d", a.artID, a.size), nil
+}
+
+func (a *resizedArtworkReader) resizeImage(ctx context.Context, reader io.Reader) (io.Reader, int, error) {
+	data, err := io.ReadAll(reader)
+	if err != nil {
+		return nil, 0, fmt.Errorf("reading image data: %w", err)
+	}
+
+	if !a.square {
+		if isAnimatedGIF(data) {
+			if a.a.ffmpeg.IsAvailable() {
+				r, err := a.a.ffmpeg.ConvertAnimatedImage(ctx, bytes.NewReader(data), a.size, conf.Server.CoverArtQuality)
+				if err == nil {
+					return r, 0, nil
+				}
+				log.Warn(ctx, "Could not convert animated GIF, falling back to static", err)
+			}
+		} else if isAnimatedWebP(data) || isAnimatedPNG(data) {
+			return bytes.NewReader(data), 0, nil
+		}
+	}
+
+	return resizeStaticImage(data, a.size, a.square)
 }
 
 func shouldEncodeLossless(format string, originalBytes int, bounds image.Rectangle, header []byte) bool {
@@ -95,50 +125,37 @@ func shouldEncodeLossless(format string, originalBytes int, bounds image.Rectang
 	bpp := float64(originalBytes*8) / float64(totalPixels)
 
 	isNativeLossless := false
-	if format == "png" {
+	switch format {
+	case "png":
 		isNativeLossless = true
-	} else if format == "jpeg" {
+	case "jpeg":
 		return false
-	} else if format == "webp" && len(header) >= 12 && string(header[0:4]) == "RIFF" && string(header[8:12]) == "WEBP" {
-		offset := 12
-		for offset+8 <= len(header) {
-			chunkID := string(header[offset : offset+4])
-			if chunkID == "VP8L" {
-				isNativeLossless = true
-				break
+	case "webp":
+		if len(header) >= 12 && string(header[0:4]) == "RIFF" && string(header[8:12]) == "WEBP" {
+			offset := 12
+			for offset+8 <= len(header) {
+				chunkID := string(header[offset : offset+4])
+				if chunkID == "VP8L" {
+					isNativeLossless = true
+					break
+				}
+				if chunkID == "VP8 " {
+					break
+				}
+				chunkLen := binary.LittleEndian.Uint32(header[offset+4 : offset+8])
+				advance := 8 + int(chunkLen)
+				if chunkLen%2 != 0 {
+					advance++
+				}
+				offset += advance
 			}
-			if chunkID == "VP8 " {
-				break
-			}
-
-			chunkLen := binary.LittleEndian.Uint32(header[offset+4 : offset+8])
-			advance := 8 + int(chunkLen)
-			if chunkLen%2 != 0 {
-				advance++
-			}
-			offset += advance
 		}
 	}
 
 	if isNativeLossless && bpp < 8.0 {
 		return true
 	}
-	if bpp < 3.0 {
-		return true
-	}
-
-	return false
-}
-
-type countingReader struct {
-	r io.Reader
-	n int
-}
-
-func (c *countingReader) Read(p []byte) (int, error) {
-	n, err := c.r.Read(p)
-	c.n += n
-	return n, err
+	return bpp < 3.0
 }
 
 func qualityBySize(n int, m int) int {
@@ -148,90 +165,97 @@ func qualityBySize(n int, m int) int {
 	if n >= m {
 		return conf.Server.CoverArtMaxQuality
 	}
-
-	top := float64(n - 300)
-	bottom := float64(m - 300)
-
-	ratio := top / bottom
-
+	ratio := float64(n-300) / float64(m-300)
 	minQ := float64(conf.Server.CoverArtMinQuality)
 	maxQ := float64(conf.Server.CoverArtMaxQuality)
-	qualityFloat := minQ + (ratio * (maxQ - minQ))
-
-	return int(qualityFloat)
+	return int(minQ + ratio*(maxQ-minQ))
 }
 
-func resizeImage(reader io.Reader, size int, square bool) (io.Reader, int, error) {
-	br := bufio.NewReader(reader)
+func resizeStaticImage(data []byte, size int, square bool) (io.Reader, int, error) {
+	header := data
+	if len(header) > 512 {
+		header = header[:512]
+	}
 
-	header, _ := br.Peek(512)
-
-	cr := &countingReader{r: br}
-	original, format, err := image.Decode(cr)
+	original, format, err := image.Decode(bytes.NewReader(data))
 	if err != nil {
 		return nil, 0, err
 	}
-
-	originalBytes := cr.n
-	imgSrcSameFormatAsServer := format == conf.Server.CoverArtFormat
+	originalBytes := len(data)
 
 	bounds := original.Bounds()
 	originalSize := max(bounds.Max.X, bounds.Max.Y)
 
-	if imgSrcSameFormatAsServer && originalSize <= size {
+	// Clamp to original — upscaling wastes resources and adds no information
+	if size > originalSize {
+		size = originalSize
+	}
+
+	if originalSize <= size && !square {
 		return nil, originalSize, nil
 	}
 
-	var resized image.Image
-	if originalSize <= size {
-		resized = original
-	} else {
-		resized = imaging.Fit(original, size, size, imaging.Lanczos)
-	}
+	srcW, srcH := bounds.Dx(), bounds.Dy()
+	scale := float64(size) / float64(max(srcW, srcH))
+	dstW := int(float64(srcW) * scale)
+	dstH := int(float64(srcH) * scale)
 
-	if square && bounds.Dx() != bounds.Dy() {
-		bg := image.NewRGBA(image.Rect(0, 0, size, size))
-		resized = imaging.OverlayCenter(bg, resized, 1)
+	var dst *image.NRGBA
+	var dstRect image.Rectangle
+	if square {
+		dst = image.NewNRGBA(image.Rect(0, 0, size, size))
+		offsetX := (size - dstW) / 2
+		offsetY := (size - dstH) / 2
+		dstRect = image.Rect(offsetX, offsetY, offsetX+dstW, offsetY+dstH)
+	} else {
+		dst = image.NewNRGBA(image.Rect(0, 0, dstW, dstH))
+		dstRect = dst.Bounds()
 	}
+	xdraw.BiLinear.Scale(dst, dstRect, original, bounds, draw.Src, nil)
 
 	encodeLossless := shouldEncodeLossless(format, originalBytes, bounds, header)
 
-	buf := new(bytes.Buffer)
+	buf := bufPool.Get().(*bytes.Buffer)
+	buf.Reset()
 
 	if encodeLossless {
 		switch conf.Server.CoverArtFormat {
 		case "jxl":
-			err = jpegxl.Encode(buf, resized, jpegxl.Options{Quality: 100})
+			err = jpegxl.Encode(buf, dst, jpegxl.Options{Quality: 100})
 		case "png":
-			err = png.Encode(buf, resized)
+			err = png.Encode(buf, dst)
 		default:
-			// if you wanna use shitty formats like png and jpeg pick png, it's gonna go with jpeg for lossy then. jpeg picks webp for lossless because ig some people would prefer how jpeg handles lossy images idk.
-			// if you pick avif you also get webp for lossless because lossy avif is a joke
-			err = webp.Encode(buf, resized, webp.Options{Quality: 100, Lossless: true})
+			err = webp.Encode(buf, dst, webp.Options{Quality: 100, Lossless: true})
 		}
 	} else {
-		q := qualityBySize(size, min(size, originalSize))
+		q := qualityBySize(size, originalSize)
 		switch conf.Server.CoverArtFormat {
 		case "webp":
-			err = webp.Encode(buf, resized, webp.Options{Quality: q})
+			err = webp.Encode(buf, dst, webp.Options{Quality: q})
 		case "jxl":
-			err = jpegxl.Encode(buf, resized, jpegxl.Options{Quality: q})
+			err = jpegxl.Encode(buf, dst, jpegxl.Options{Quality: q})
 		case "avif":
-			err = avif.Encode(buf, resized, avif.Options{Quality: q, Advanced: map[string]string{
+			err = avif.Encode(buf, dst, avif.Options{Quality: q, Advanced: map[string]string{
 				"tune": "iq",
 			}})
-		default: // png and jpeg
-			err = jpeg.Encode(buf, resized, &jpeg.Options{Quality: q})
+		default: // png and jpeg both fall back to jpeg for lossy
+			err = jpeg.Encode(buf, dst, &jpeg.Options{Quality: q})
 		}
 	}
 
-	if imgSrcSameFormatAsServer && buf.Len() >= originalBytes {
+	// If we re-encoded to the same format and somehow made it bigger, just serve the original
+	if format == conf.Server.CoverArtFormat && buf.Len() >= originalBytes {
+		bufPool.Put(buf)
 		return nil, originalSize, nil
 	}
 
 	if err != nil {
-		return buf, originalSize, err
+		bufPool.Put(buf)
+		return nil, originalSize, err
 	}
 
-	return buf, originalSize, nil
+	encoded := make([]byte, buf.Len())
+	copy(encoded, buf.Bytes())
+	bufPool.Put(buf)
+	return bytes.NewReader(encoded), originalSize, nil
 }
