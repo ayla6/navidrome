@@ -288,7 +288,6 @@ func Load(noConfigDump bool) {
 	mapDeprecatedOption("ReverseProxyWhitelist", "ExtAuth.TrustedSources")
 	mapDeprecatedOption("ReverseProxyUserHeader", "ExtAuth.UserHeader")
 	mapDeprecatedOption("HTTPSecurityHeaders.CustomFrameOptionsValue", "HTTPHeaders.FrameOptions")
-	mapDeprecatedOption("CoverJpegQuality", "CoverArtQuality")
 
 	err := viper.Unmarshal(&Server)
 	if err != nil {
@@ -421,7 +420,6 @@ func Load(noConfigDump bool) {
 	logDeprecatedOptions("ReverseProxyWhitelist", "ExtAuth.TrustedSources")
 	logDeprecatedOptions("ReverseProxyUserHeader", "ExtAuth.UserHeader")
 	logDeprecatedOptions("HTTPSecurityHeaders.CustomFrameOptionsValue", "HTTPHeaders.FrameOptions")
-	logDeprecatedOptions("CoverJpegQuality", "CoverArtQuality")
 
 	// Call init hooks
 	for _, hook := range hooks {

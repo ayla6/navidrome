@@ -53,7 +53,8 @@ func setupE2EBenchmark(b *testing.B, cacheSize string) (Artwork, model.ArtworkID
 	// Configure cache
 	conf.Server.ImageCacheSize = cacheSize
 	conf.Server.CacheFolder = tmpDir
-	conf.Server.CoverArtQuality = 75
+	conf.Server.CoverArtMinQuality = 75
+	conf.Server.CoverArtMaxQuality = 75
 	conf.Server.CoverArtPriority = "cover.*"
 
 	// Set up mock data store with album pointing to our cover.

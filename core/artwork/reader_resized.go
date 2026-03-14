@@ -103,7 +103,7 @@ func (a *resizedArtworkReader) resizeImage(ctx context.Context, reader io.Reader
 	if !a.square {
 		if isAnimatedGIF(data) {
 			if a.a.ffmpeg.IsAvailable() {
-				r, err := a.a.ffmpeg.ConvertAnimatedImage(ctx, bytes.NewReader(data), a.size, conf.Server.CoverArtQuality)
+				r, err := a.a.ffmpeg.ConvertAnimatedImage(ctx, bytes.NewReader(data), a.size, conf.Server.CoverArtMaxQuality)
 				if err == nil {
 					return r, 0, nil
 				}
