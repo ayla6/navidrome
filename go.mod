@@ -8,6 +8,7 @@ replace go.senan.xyz/taglib => github.com/deluan/go-taglib v0.0.0-20260307161927
 require (
 	github.com/Masterminds/squirrel v1.5.4
 	github.com/andybalholm/cascadia v1.3.3
+	github.com/ayla6/avif v0.0.0-20260224164340-62ee604da632
 	github.com/bmatcuk/doublestar/v4 v4.10.0
 	github.com/bradleyjkemp/cupaloy/v2 v2.8.0
 	github.com/deluan/rest v0.0.0-20211102003136-6260bc399cbf
@@ -20,6 +21,7 @@ require (
 	github.com/dustin/go-humanize v1.0.1
 	github.com/extism/go-sdk v1.7.1
 	github.com/fatih/structs v1.1.0
+	github.com/gen2brain/jpegxl v0.4.5
 	github.com/gen2brain/webp v0.5.5
 	github.com/go-chi/chi/v5 v5.2.5
 	github.com/go-chi/cors v1.2.2
@@ -72,7 +74,6 @@ require (
 	dario.cat/mergo v1.0.2 // indirect
 	github.com/Masterminds/semver/v3 v3.4.0 // indirect
 	github.com/atombender/go-jsonschema v0.20.0 // indirect
-	github.com/ayla6/avif v0.0.0-20260224164340-62ee604da632 // indirect
 	github.com/aymerick/douceur v0.2.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/reflex v0.3.1 // indirect
@@ -83,8 +84,6 @@ require (
 	github.com/dylibso/observe-sdk/go v0.0.0-20240828172851-9145d8ad07e1 // indirect
 	github.com/ebitengine/purego v0.10.0 // indirect
 	github.com/fsnotify/fsnotify v1.9.0 // indirect
-	github.com/gen2brain/jpegxl v0.4.5 // indirect
-	github.com/gen2brain/webp v0.5.5 // indirect
 	github.com/go-logr/logr v1.4.3 // indirect
 	github.com/go-task/slim-sprig/v3 v3.0.0 // indirect
 	github.com/go-viper/mapstructure/v2 v2.5.0 // indirect
