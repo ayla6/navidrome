@@ -660,8 +660,8 @@ func setViperDefaults() {
 	viper.SetDefault("mpvcmdtemplate", "mpv --audio-device=%d --no-audio-display %f --input-ipc-server=%s")
 	viper.SetDefault("coverartpriority", "cover.*, folder.*, front.*, embedded, external")
 	viper.SetDefault("coverartformat", "webp")
-	viper.SetDefault("coverartminquality", 50)
-	viper.SetDefault("coverartmaxquality", 70)
+	viper.SetDefault("coverartminquality", 70)
+	viper.SetDefault("coverartmaxquality", 90)
 	viper.SetDefault("coverartmaxresolution", 0) // 0 will always serve the original
 	viper.SetDefault("artistartpriority", "artistinfo, artist.*, album/artist.*, external")
 	viper.SetDefault("discartpriority", "disc*.*, cd*.*, cover.*, folder.*, front.*, discsubtitle, embedded")
