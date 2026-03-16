@@ -25,12 +25,6 @@ const (
 	// maxArtistFolderTraversalDepth defines how many directory levels to search
 	// when looking for artist images (artist folder + parent directories)
 	maxArtistFolderTraversalDepth = 3
-
-	// artistInfoSubdir is the subfolder under the library root used to store
-	// manually managed artist images. Layout:
-	//   <libraryRoot>/ArtistInfo/<ArtistName>/thumb.<ext>
-	artistInfoSubdir = "ArtistInfo"
-	artistInfoThumb  = "thumb.*"
 )
 
 type artistReader struct {
@@ -39,7 +33,6 @@ type artistReader struct {
 	provider     external.Provider
 	artist       model.Artist
 	artistFolder string
-	libPath      string // root path of the library this artist belongs to
 	imgFiles     []string
 }
 
@@ -62,7 +55,7 @@ func newArtistArtworkReader(ctx context.Context, artwork *artwork, artID model.A
 	if err != nil {
 		return nil, err
 	}
-	artistFolder, libPath, artistFolderLastUpdate, err := loadArtistFolder(ctx, artwork.ds, als, albumPaths)
+	artistFolder, artistFolderLastUpdate, err := loadArtistFolder(ctx, artwork.ds, als, albumPaths)
 	if err != nil {
 		return nil, err
 	}
@@ -71,7 +64,6 @@ func newArtistArtworkReader(ctx context.Context, artwork *artwork, artID model.A
 		provider:     provider,
 		artist:       *ar,
 		artistFolder: artistFolder,
-		libPath:      libPath,
 		imgFiles:     imgFiles,
 	}
 	// TODO Find a way to factor in the ExternalUpdateInfoAt in the cache key. Problem is that it can
@@ -112,8 +104,6 @@ func (a *artistReader) fromArtistArtPriority(ctx context.Context, priority strin
 		switch {
 		case pattern == "external":
 			ff = append(ff, fromArtistExternalSource(ctx, a.artist, a.provider))
-		case pattern == "artistinfo":
-			ff = append(ff, fromArtistInfoFolder(ctx, a.libPath, a.artist.Name))
 		case strings.HasPrefix(pattern, "album/"):
 			ff = append(ff, fromExternalFile(ctx, a.imgFiles, strings.TrimPrefix(pattern, "album/")))
 		default:
@@ -121,19 +111,6 @@ func (a *artistReader) fromArtistArtPriority(ctx context.Context, priority strin
 		}
 	}
 	return ff
-}
-
-// fromArtistInfoFolder looks for a thumbnail image at:
-//
-//	<libPath>/ArtistInfo/<artistName>/thumb.<ext>
-func fromArtistInfoFolder(ctx context.Context, libPath, artistName string) sourceFunc {
-	return func() (io.ReadCloser, string, error) {
-		if libPath == "" {
-			return nil, "", fmt.Errorf("no library path available for ArtistInfo lookup")
-		}
-		folder := filepath.Join(libPath, artistInfoSubdir, artistName)
-		return findImageInFolder(ctx, folder, artistInfoThumb)
-	}
 }
 
 func fromArtistFolder(ctx context.Context, artistFolder string, pattern string) sourceFunc {
@@ -190,11 +167,9 @@ func findImageInFolder(ctx context.Context, folder, pattern string) (io.ReadClos
 	return nil, "", fmt.Errorf(`no matches for '%s' in '%s'`, pattern, folder)
 }
 
-// loadArtistFolder returns the artist's folder path, its library root path,
-// and the folder's last image update time.
-func loadArtistFolder(ctx context.Context, ds model.DataStore, albums model.Albums, paths []string) (string, string, time.Time, error) {
+func loadArtistFolder(ctx context.Context, ds model.DataStore, albums model.Albums, paths []string) (string, time.Time, error) {
 	if len(albums) == 0 {
-		return "", "", time.Time{}, nil
+		return "", time.Time{}, nil
 	}
 	libID := albums[0].LibraryID // Just need one of the albums, as they should all be in the same Library - for now! TODO: Support multiple libraries
 
@@ -217,7 +192,7 @@ func loadArtistFolder(ctx context.Context, ds model.DataStore, albums model.Albu
 	if err != nil || len(folders) == 0 {
 		log.Warn(ctx, "Could not find folder for artist", "folderPath", folderPath, "id", folderID,
 			"libPath", libPath, "libID", libID, err)
-		return "", "", time.Time{}, err
+		return "", time.Time{}, err
 	}
-	return folderPath, libPath, folders[0].ImagesUpdatedAt, nil
+	return folderPath, folders[0].ImagesUpdatedAt, nil
 }
