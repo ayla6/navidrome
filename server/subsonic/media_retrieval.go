@@ -82,7 +82,7 @@ func (api *Router) GetCoverArt(w http.ResponseWriter, r *http.Request) (*respons
 
 	defer imgReader.Close()
 	w.Header().Set("cache-control", "public, max-age=315360000")
-	w.Header().Set("last-modified", lastUpdate.Format(time.RFC1123))
+	w.Header().Set("last-modified", lastUpdate.Format(http.TimeFormat))
 
 	sniffBuf := make([]byte, 512)
 	// Use ReadFull so the buffer is as populated as possible for accurate sniffing.
