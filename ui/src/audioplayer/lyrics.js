@@ -32,22 +32,6 @@ const compareNullableTime = (a, b) => {
   return a - b
 }
 
-const sortTokensByStart = (tokens) =>
-  tokens
-    .map((token, order) => ({ ...token, order }))
-    .sort((a, b) => {
-      const byStart = compareNullableTime(a.start, b.start)
-      if (byStart !== 0) {
-        return byStart
-      }
-      const byEnd = compareNullableTime(a.end, b.end)
-      if (byEnd !== 0) {
-        return byEnd
-      }
-      return a.order - b.order
-    })
-    .map(({ order, ...token }) => token)
-
 const languageMatch = (candidate, preferred) => {
   if (!candidate || !preferred) {
     return false
@@ -118,11 +102,9 @@ const normalizeCueLine = (cueLine, fallbackIndex, agentLookup) => {
   const agentId = typeof cueLine?.agentId === 'string' ? cueLine.agentId : ''
   const agent = agentId ? agentLookup.get(agentId) || null : null
   const fallbackRole = typeof cueLine?.role === 'string' ? cueLine.role : ''
-  const tokens = sortTokensByStart(
-    Array.isArray(cueLine?.cue)
+  const tokens = Array.isArray(cueLine?.cue)
       ? cueLine.cue.map(normalizeToken).filter(Boolean)
-      : [],
-  )
+      : []
 
   return {
     index,
@@ -346,7 +328,7 @@ export const buildKaraokeLines = (structuredLyric) => {
           return Array.from(byIndex.entries()).map(([index, group]) => {
             const first = group[0]
             const baseLine = baseLines[index] || {}
-            const tokens = sortTokensByStart(group.flatMap((cl) => cl.tokens))
+            const tokens = group.flatMap((cl) => cl.tokens)
             const fallbackStart =
               tokens.find((token) => token.start != null)?.start ?? null
             const fallbackEnd =
@@ -378,22 +360,6 @@ export const buildKaraokeLines = (structuredLyric) => {
         }))
 
   const normalized = lines
-    .filter((line) => line.value || line.tokens.length > 0)
-    .sort((a, b) => {
-      if (a.start == null && b.start == null) {
-        return a.index - b.index
-      }
-      if (a.start == null) {
-        return 1
-      }
-      if (b.start == null) {
-        return -1
-      }
-      if (a.start !== b.start) {
-        return a.start - b.start
-      }
-      return a.index - b.index
-    })
 
   for (let i = 0; i < normalized.length; i += 1) {
     if (normalized[i].end == null) {
