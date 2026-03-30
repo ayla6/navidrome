@@ -103,8 +103,8 @@ const normalizeCueLine = (cueLine, fallbackIndex, agentLookup) => {
   const agent = agentId ? agentLookup.get(agentId) || null : null
   const fallbackRole = typeof cueLine?.role === 'string' ? cueLine.role : ''
   const tokens = Array.isArray(cueLine?.cue)
-      ? cueLine.cue.map(normalizeToken).filter(Boolean)
-      : []
+    ? cueLine.cue.map(normalizeToken).filter(Boolean)
+    : []
 
   return {
     index,
