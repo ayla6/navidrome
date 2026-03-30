@@ -39,7 +39,7 @@ func fromExternalFile(ctx context.Context, mf *model.MediaFile, suffix string) (
 
 	var list model.LyricList
 	switch {
-	case strings.EqualFold(suffix, ".ttml"):
+	case strings.EqualFold(suffix, ".ttml"), strings.EqualFold(suffix, ".uttml"):
 		list, err = parseTTML(contents)
 		if err != nil {
 			log.Error(ctx, "error parsing ttml external file", "path", externalLyric, err)
