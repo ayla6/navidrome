@@ -194,7 +194,7 @@ var staticData = sync.OnceValue(func() insights.Data {
 	data.Config.DefaultBackgroundURLSet = conf.Server.UILoginBackgroundURL == consts.DefaultUILoginBackgroundURL
 	data.Config.EnableArtworkPrecache = conf.Server.EnableArtworkPrecache
 	data.Config.EnableArtworkUpload = conf.Server.EnableArtworkUpload
-	data.Config.CoverArtQuality = conf.Server.CoverArtQuality
+	data.Config.CoverArtMaxQuality = conf.Server.CoverArtMaxQuality
 	data.Config.EnableCoverAnimation = conf.Server.EnableCoverAnimation
 	data.Config.EnableNowPlaying = conf.Server.EnableNowPlaying
 	data.Config.EnableDownloads = conf.Server.EnableDownloads
