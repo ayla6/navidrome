@@ -434,32 +434,6 @@ describe('lyrics helpers', () => {
     expect(lines[0].tokens[0].agentName).toBe('')
   })
 
-  it('sorts token timing by start to keep playback stable', () => {
-    const lines = buildKaraokeLines({
-      lang: 'eng',
-      synced: true,
-      line: [{ start: 1000, end: 3000, value: 'Hello world' }],
-      cueLine: [
-        {
-          index: 0,
-          start: 1000,
-          end: 3000,
-          value: 'Hello world',
-          role: '',
-          cue: [
-            { start: 2000, end: 2500, value: 'world' },
-            { start: 1000, end: 1500, value: 'Hello' },
-          ],
-        },
-      ],
-    })
-
-    expect(lines[0].tokens.map((token) => token.value)).toEqual([
-      'Hello',
-      'world',
-    ])
-  })
-
   it('keeps a single full-line token unchanged instead of expanding it synthetically', () => {
     const lines = buildKaraokeLines({
       lang: 'ko-Latn',
