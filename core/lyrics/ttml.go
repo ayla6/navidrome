@@ -45,14 +45,15 @@ type ttmlTimingParams struct {
 }
 
 type ttmlTimingContext struct {
-	lang     string
-	role     string
-	agentID  string
-	begin    int64
-	hasBegin bool
-	end      int64
-	hasEnd   bool
-	invalid  bool
+	lang       string
+	role       string
+	agentID    string
+	begin      int64
+	hasBegin   bool
+	end        int64
+	hasEnd     bool
+	invalid    bool
+	isMetadata bool
 }
 
 type ttmlLineRef struct {
@@ -156,6 +157,11 @@ func (p *ttmlParser) parseElement(start xml.StartElement, parent ttmlTimingConte
 	}
 
 	ctx := p.childContext(start.Attr, parent)
+
+	if local == "div" && !ctx.isMetadata {
+		p.addMainLineBreak(ctx.lang)
+	}
+
 	if local == "p" {
 		lineText, tokens, err := p.parseParagraph(ctx)
 		if err != nil {
@@ -211,6 +217,7 @@ func (p *ttmlParser) parseElement(start xml.StartElement, parent ttmlTimingConte
 
 func (p *ttmlParser) parseMetadataTrack(start xml.StartElement, parent ttmlTimingContext, kind string) error {
 	ctx := p.childContext(start.Attr, parent)
+	ctx.isMetadata = true
 	lang := normalizeTTMLLang(ctx.lang)
 
 	for {
@@ -422,11 +429,28 @@ func (p *ttmlParser) toLyricList() model.LyricList {
 		if len(lines) == 0 {
 			continue
 		}
+
+		synced := linesAreSynced(lines)
+
+		// Filter out stanza breaks (empty lines) if the TTML turns out to be unsynced
+		if synced {
+			filtered := make([]model.Line, 0, len(lines))
+			for _, l := range lines {
+				if l.Value != "" || len(l.Cue) > 0 {
+					filtered = append(filtered, l)
+				}
+			}
+			lines = filtered
+			if len(lines) == 0 {
+				continue
+			}
+		}
+
 		res = append(res, p.finalizeLyrics(model.Lyrics{
 			Kind:   ttmlLyricKindMain,
 			Lang:   lang,
 			Line:   lines,
-			Synced: linesAreSynced(lines),
+			Synced: synced,
 		}))
 	}
 
@@ -675,6 +699,18 @@ func (p *ttmlParser) addMainLine(lang string, lineKey string, line model.Line) {
 		}
 	}
 	p.mainLineOrder++
+}
+
+func (p *ttmlParser) addMainLineBreak(lang string) {
+	lang = normalizeTTMLLang(lang)
+	lines := p.mainLinesByLang[lang]
+	if len(lines) == 0 {
+		return
+	}
+	lastLine := lines[len(lines)-1]
+	if lastLine.Value != "" || len(lastLine.Cue) > 0 {
+		p.addMainLine(lang, "", model.Line{Value: ""})
+	}
 }
 
 func (p *ttmlParser) addMetadataEntry(kind string, lang string, entry ttmlMetadataEntry) {

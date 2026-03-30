@@ -78,7 +78,7 @@ func ToLyrics(language, text string) (*Lyrics, error) {
 
 	for _, line := range lines {
 		line := strings.TrimSpace(line)
-		if line == "" {
+		if synced && line == "" {
 			if validLine {
 				priorLine += "\n"
 			}
