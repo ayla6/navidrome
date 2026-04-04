@@ -98,6 +98,16 @@ func (s *deciderService) MakeDecision(ctx context.Context, mf *model.MediaFile, 
 
 	// Try transcoding profiles (in order of preference)
 	for _, profile := range clientInfo.TranscodingProfiles {
+		// Check if we can serve the original instead of transcoding
+		if conf.Server.AllowServeOriginalIfNearBitrate {
+			if s.canServeOriginalInsteadOfTranscode(ctx, src, &profile, clientInfo) {
+				decision.CanDirectPlay = true
+				log.Debug(ctx, "Transcode decision: serving original instead of transcoding",
+					"mediaID", mf.ID, "sourceBitrate", src.Bitrate, "sourceCodec", src.Codec)
+				return decision, nil
+			}
+		}
+
 		if ts, transcodeFormat := s.computeTranscodedStream(ctx, src, &profile, clientInfo); ts != nil {
 			decision.CanTranscode = true
 			decision.TargetFormat = transcodeFormat
@@ -296,6 +306,74 @@ func (s *deciderService) computeTranscodedStream(ctx context.Context, src *Detai
 	}
 
 	return ts, targetFormat
+}
+
+// canServeOriginalInsteadOfTranscode checks if the original file's bitrate is within 150% of
+// the requested bitrate and the codec is acceptable for the target format.
+// If both conditions are met, the original file can be served directly.
+func (s *deciderService) canServeOriginalInsteadOfTranscode(ctx context.Context, src *Details, profile *Profile, clientInfo *ClientInfo) bool {
+	// Determine target format and bitrate that would be used for transcoding
+	_, targetFormat := resolveTargetFormat(profile)
+	if targetFormat == "" {
+		return false
+	}
+
+	// Check if source codec matches target format (normalized for comparison)
+	normalizedSourceCodec := strings.ToLower(src.Codec)
+	normalizedTargetFormat := strings.ToLower(targetFormat)
+
+	// Check if the codecs are compatible (source codec should match or be compatible with target)
+	if !isCodecCompatible(normalizedSourceCodec, normalizedTargetFormat) {
+		return false
+	}
+
+	// Determine what bitrate would be requested for transcoding
+	var targetBitrate int
+	if src.IsLossless {
+		if clientInfo.MaxTranscodingAudioBitrate > 0 {
+			targetBitrate = clientInfo.MaxTranscodingAudioBitrate
+		} else if clientInfo.MaxAudioBitrate > 0 {
+			targetBitrate = clientInfo.MaxAudioBitrate
+		} else {
+			targetBitrate = lookupDefaultBitrate(ctx, s.ds, targetFormat)
+		}
+	} else {
+		targetBitrate = src.Bitrate
+	}
+
+	// Apply bitrate constraints as the actual decision would
+	if clientInfo.MaxAudioBitrate > 0 && targetBitrate > clientInfo.MaxAudioBitrate {
+		targetBitrate = clientInfo.MaxAudioBitrate
+	}
+
+	// Check if source bitrate is within 150% of target bitrate
+	// e.g., if target is 128kbps, source can be up to 192kbps
+	maxAllowedBitrate := (targetBitrate * 3) / 2
+	if src.Bitrate <= maxAllowedBitrate {
+		log.Debug(ctx, "Original file within bitrate threshold, skipping transcode",
+			"sourceBitrate", src.Bitrate, "targetBitrate", targetBitrate, "maxAllowed", maxAllowedBitrate)
+		return true
+	}
+
+	log.Trace(ctx, "Original file bitrate exceeds threshold",
+		"sourceBitrate", src.Bitrate, "targetBitrate", targetBitrate, "maxAllowed", maxAllowedBitrate)
+	return false
+}
+
+// isCodecCompatible checks if a source codec is compatible with a target format.
+// Uses the centralized codec and container alias system to determine compatibility.
+func isCodecCompatible(sourceCodec, targetFormat string) bool {
+	// Check if they match as codecs (handles codec aliases)
+	if matchesCodec(sourceCodec, []string{targetFormat}) {
+		return true
+	}
+
+	// Check if they match as containers (handles container aliases)
+	if matchesContainer(sourceCodec, []string{targetFormat}) {
+		return true
+	}
+
+	return false
 }
 
 // lookupDefaultBitrate returns the default bitrate for the given format.

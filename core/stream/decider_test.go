@@ -1187,4 +1187,219 @@ var _ = Describe("Decider", func() {
 		})
 	})
 
+	Describe("canServeOriginalInsteadOfTranscode", func() {
+		var decider *deciderService
+
+		BeforeEach(func() {
+			decider = svc.(*deciderService)
+		})
+
+		Context("codec compatibility", func() {
+			It("serves original when codecs match exactly", func() {
+				src := &Details{Codec: "mp3", Bitrate: 128, IsLossless: false}
+				profile := &Profile{Container: "mp3"}
+				ci := &ClientInfo{MaxTranscodingAudioBitrate: 128}
+
+				result := decider.canServeOriginalInsteadOfTranscode(ctx, src, profile, ci)
+				Expect(result).To(BeTrue())
+			})
+
+			It("serves original when codecs are aliased (opus/ogg)", func() {
+				src := &Details{Codec: "opus", Bitrate: 128, IsLossless: false}
+				profile := &Profile{Container: "ogg"}
+				ci := &ClientInfo{MaxTranscodingAudioBitrate: 128}
+
+				result := decider.canServeOriginalInsteadOfTranscode(ctx, src, profile, ci)
+				Expect(result).To(BeTrue())
+			})
+
+			It("serves original when containers are aliased (aac/m4a)", func() {
+				src := &Details{Codec: "aac", Bitrate: 256, IsLossless: false, Container: "m4a"}
+				profile := &Profile{Container: "aac"}
+				ci := &ClientInfo{MaxTranscodingAudioBitrate: 256}
+
+				result := decider.canServeOriginalInsteadOfTranscode(ctx, src, profile, ci)
+				Expect(result).To(BeTrue())
+			})
+
+			It("rejects when source and target codecs are different lossy formats", func() {
+				src := &Details{Codec: "mp3", Bitrate: 128, IsLossless: false}
+				profile := &Profile{Container: "opus"}
+				ci := &ClientInfo{MaxTranscodingAudioBitrate: 128}
+
+				result := decider.canServeOriginalInsteadOfTranscode(ctx, src, profile, ci)
+				Expect(result).To(BeFalse())
+			})
+		})
+
+		Context("bitrate threshold (150%)", func() {
+			It("serves original when bitrate is exactly at 150% threshold", func() {
+				src := &Details{Codec: "mp3", Bitrate: 192, IsLossless: false}
+				profile := &Profile{Container: "mp3"}
+				ci := &ClientInfo{MaxTranscodingAudioBitrate: 128}
+
+				result := decider.canServeOriginalInsteadOfTranscode(ctx, src, profile, ci)
+				Expect(result).To(BeTrue())
+			})
+
+			It("serves original when bitrate is below threshold", func() {
+				src := &Details{Codec: "mp3", Bitrate: 170, IsLossless: false}
+				profile := &Profile{Container: "mp3"}
+				ci := &ClientInfo{MaxTranscodingAudioBitrate: 128}
+
+				result := decider.canServeOriginalInsteadOfTranscode(ctx, src, profile, ci)
+				Expect(result).To(BeTrue())
+			})
+
+			It("rejects when lossless bitrate exceeds 150% threshold", func() {
+				// For lossless to lossy, the threshold applies
+				src := &Details{Codec: "flac", Bitrate: 193, IsLossless: true}
+				profile := &Profile{Container: "mp3"}
+				ci := &ClientInfo{MaxTranscodingAudioBitrate: 128}
+
+				result := decider.canServeOriginalInsteadOfTranscode(ctx, src, profile, ci)
+				Expect(result).To(BeFalse())
+			})
+
+			It("serves original when lower bitrate requested", func() {
+				src := &Details{Codec: "flac", Bitrate: 300, IsLossless: true}
+				profile := &Profile{Container: "mp3"}
+				ci := &ClientInfo{}
+
+				result := decider.canServeOriginalInsteadOfTranscode(ctx, src, profile, ci)
+				Expect(result).To(BeFalse())
+			})
+		})
+
+		Context("lossy to lossy handling", func() {
+			It("uses source bitrate when source is lossy", func() {
+				src := &Details{Codec: "mp3", Bitrate: 320, IsLossless: false}
+				profile := &Profile{Container: "mp3"}
+				ci := &ClientInfo{}
+
+				result := decider.canServeOriginalInsteadOfTranscode(ctx, src, profile, ci)
+				Expect(result).To(BeTrue())
+			})
+		})
+
+		Context("lossless to lossy handling", func() {
+			It("uses max transcoding bitrate when available", func() {
+				src := &Details{Codec: "flac", Bitrate: 1000, IsLossless: true}
+				profile := &Profile{Container: "mp3"}
+				ci := &ClientInfo{MaxTranscodingAudioBitrate: 192}
+
+				result := decider.canServeOriginalInsteadOfTranscode(ctx, src, profile, ci)
+				Expect(result).To(BeFalse())
+			})
+
+			It("falls back to max audio bitrate if no transcoding bitrate", func() {
+				src := &Details{Codec: "flac", Bitrate: 200, IsLossless: true}
+				profile := &Profile{Container: "mp3"}
+				ci := &ClientInfo{MaxAudioBitrate: 128}
+
+				result := decider.canServeOriginalInsteadOfTranscode(ctx, src, profile, ci)
+				Expect(result).To(BeFalse())
+			})
+
+			It("serves original when file bitrate within threshold of transcoding bitrate", func() {
+				src := &Details{Codec: "mp3", Bitrate: 180, IsLossless: false}
+				profile := &Profile{Container: "mp3"}
+				ci := &ClientInfo{MaxTranscodingAudioBitrate: 128}
+
+				result := decider.canServeOriginalInsteadOfTranscode(ctx, src, profile, ci)
+				// 150% of 128 = 192, 180 < 192, so true
+				Expect(result).To(BeTrue())
+			})
+
+			It("applies max audio bitrate as final cap", func() {
+				src := &Details{Codec: "flac", Bitrate: 190, IsLossless: true}
+				profile := &Profile{Container: "mp3"}
+				ci := &ClientInfo{
+					MaxTranscodingAudioBitrate: 512,
+					MaxAudioBitrate:            100,
+				}
+
+				result := decider.canServeOriginalInsteadOfTranscode(ctx, src, profile, ci)
+				Expect(result).To(BeFalse())
+			})
+		})
+	})
+
+	Describe("isCodecCompatible", func() {
+		Context("exact codec matches", func() {
+			It("matches MP3 to MP3", func() {
+				result := isCodecCompatible("mp3", "mp3")
+				Expect(result).To(BeTrue())
+			})
+
+			It("matches FLAC to FLAC", func() {
+				result := isCodecCompatible("flac", "flac")
+				Expect(result).To(BeTrue())
+			})
+		})
+
+		Context("codec aliases", func() {
+			It("matches aac to aac (same)", func() {
+				result := isCodecCompatible("aac", "aac")
+				Expect(result).To(BeTrue())
+			})
+
+			It("matches aac to adts (codec alias)", func() {
+				result := isCodecCompatible("aac", "adts")
+				Expect(result).To(BeTrue())
+			})
+
+			It("matches mpeg to mp3 (container alias)", func() {
+				result := isCodecCompatible("mpeg", "mp3")
+				Expect(result).To(BeTrue())
+			})
+		})
+
+		Context("container aliases", func() {
+			It("matches m4a to aac", func() {
+				result := isCodecCompatible("aac", "m4a")
+				Expect(result).To(BeTrue())
+			})
+
+			It("matches opus to ogg", func() {
+				result := isCodecCompatible("opus", "ogg")
+				Expect(result).To(BeTrue())
+			})
+
+			It("matches ogg to opus (reverse)", func() {
+				result := isCodecCompatible("ogg", "opus")
+				Expect(result).To(BeTrue())
+			})
+		})
+
+		Context("incompatible formats", func() {
+			It("rejects mp3 to opus", func() {
+				result := isCodecCompatible("mp3", "opus")
+				Expect(result).To(BeFalse())
+			})
+
+			It("rejects flac to mp3", func() {
+				result := isCodecCompatible("flac", "mp3")
+				Expect(result).To(BeFalse())
+			})
+
+			It("rejects aac to opus", func() {
+				result := isCodecCompatible("aac", "opus")
+				Expect(result).To(BeFalse())
+			})
+		})
+
+		Context("case insensitivity", func() {
+			It("matches with different cases", func() {
+				result := isCodecCompatible("MP3", "mp3")
+				Expect(result).To(BeTrue())
+			})
+
+			It("matches opus aliases with different cases", func() {
+				result := isCodecCompatible("OPUS", "OGG")
+				Expect(result).To(BeTrue())
+			})
+		})
+	})
+
 })

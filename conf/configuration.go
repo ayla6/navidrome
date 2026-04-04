@@ -58,6 +58,7 @@ type configOptions struct {
 	PlaylistsPath                   string
 	SmartPlaylistRefreshDelay       time.Duration
 	AutoTranscodeDownload           bool
+	AllowServeOriginalIfNearBitrate bool
 	DefaultDownsamplingFormat       string
 	Search                          searchOptions `json:",omitzero"`
 	SimilarSongsMatchThreshold      int
@@ -703,6 +704,7 @@ func setViperDefaults() {
 	viper.SetDefault("enablem3uexternalalbumart", false)
 	viper.SetDefault("enablemediafilecoverart", true)
 	viper.SetDefault("autotranscodedownload", false)
+	viper.SetDefault("allowserveoriginalifnearbitrate", true)
 	viper.SetDefault("defaultdownsamplingformat", consts.DefaultDownsamplingFormat)
 	viper.SetDefault("search.fullstring", false)
 	viper.SetDefault("search.backend", "fts")
