@@ -108,8 +108,7 @@ func (a *resizedArtworkReader) resizeImage(ctx context.Context, reader io.Reader
 			if err == nil {
 				return r, 0, nil
 			}
-			log.Warn(ctx,dd
-				"Could not convert animated GIF, falling back to static", err)
+			log.Warn(ctx, "Could not convert animated GIF, falling back to static", err)
 		}
 	} else if isAnimatedWebP(data) || isAnimatedPNG(data) {
 		// Animated WebP/APNG: return original as-is (ffmpeg can't re-encode these)
