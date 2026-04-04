@@ -104,7 +104,7 @@ func (a *resizedArtworkReader) resizeImage(ctx context.Context, reader io.Reader
 	if isAnimatedGIF(data) {
 		if a.a.ffmpeg.IsAvailable() {
 			// Animated GIF: convert to animated WebP via ffmpeg (with optional resize)
-			r, err := a.a.ffmpeg.ConvertAnimatedImage(ctx, bytes.NewReader(data), a.size, conf.Server.CoverArtQuality)
+			r, err := a.a.ffmpeg.ConvertAnimatedImage(ctx, bytes.NewReader(data), a.size, conf.Server.CoverArtMaxQuality)
 			if err == nil {
 				return r, 0, nil
 			}
