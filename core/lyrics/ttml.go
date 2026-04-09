@@ -798,12 +798,11 @@ func (p *ttmlParser) childContext(attrs []xml.Attr, parent ttmlTimingContext) tt
 			ctx.invalid = true
 			return ctx
 		}
-		if ctx.hasBegin {
-			durEnd := ctx.begin + dur
-			if !calculatedHasEnd || durEnd < calculatedEnd {
-				calculatedEnd = durEnd
-				calculatedHasEnd = true
-			}
+
+		durEnd := ctx.begin + dur
+		if !calculatedHasEnd || durEnd < calculatedEnd {
+			calculatedEnd = durEnd
+			calculatedHasEnd = true
 		}
 	}
 
@@ -871,14 +870,19 @@ func resolveTTMLTime(value int64, kind ttmlTimeKind, base int64, parent ttmlTimi
 		offset := base + value
 
 		// No parent timing context → no reference frame for offsets.
-		// Prefer absolute when offset differs (i.e., base > 0).
-		if !parent.hasBegin && !parent.hasEnd && base != 0 {
+		if !parent.hasBegin && !parent.hasEnd && base == 0 {
 			return absolute
 		}
 
+		// Heuristic to decide if an ambiguous time (like '1s' or '0.123') should be
+		// treated as absolute or an offset to the parent's begin time. This is
+		// particularly useful for non-standard TTML where absolute times are
+		// used even when nested.
 		if parent.hasBegin && parent.hasEnd {
 			absoluteInParent := absolute >= parent.begin && absolute <= parent.end
 			offsetInParent := offset >= parent.begin && offset <= parent.end
+
+			// If only one interpretation fits within the parent window, use it.
 			if absoluteInParent && !offsetInParent {
 				return absolute
 			}
@@ -888,13 +892,17 @@ func resolveTTMLTime(value int64, kind ttmlTimeKind, base int64, parent ttmlTimi
 		}
 
 		if parent.hasBegin {
+			// If absolute time is before parent's begin, it's almost certainly an offset.
 			if absolute < parent.begin && offset >= parent.begin {
 				return offset
 			}
+			// If it could be either, prefer absolute. For standard TTML this is slightly
+			// risky but essential for robustness with messy real-world files.
 			if absolute >= parent.begin && offset > absolute {
 				return absolute
 			}
 		}
+
 		return offset
 	default:
 		return base + value
@@ -940,13 +948,17 @@ func parseTTMLTimeExpression(expr string, params ttmlTimingParams) (int64, ttmlT
 			seconds = value / 1000
 		case "f":
 			seconds = value / params.frameRate
+			return int64(math.Round(seconds * 1000)), ttmlTimeOffset, true
 		case "t":
 			seconds = value / params.tickRate
+			return int64(math.Round(seconds * 1000)), ttmlTimeOffset, true
 		default:
 			return 0, ttmlTimeOffset, false
 		}
 
-		return int64(math.Round(seconds * 1000)), ttmlTimeOffset, true
+		// h, m, s, ms are common both in standard offset-time AND as non-standard absolute-time.
+		// Treat them as ambiguous so resolveTTMLTime can use its heuristic.
+		return int64(math.Round(seconds * 1000)), ttmlTimeAmbiguous, true
 	}
 
 	colonCount := strings.Count(expr, ":")
