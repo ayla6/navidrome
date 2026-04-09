@@ -31,7 +31,7 @@ var _ = Describe("parseTTML", func() {
 			eng := list[0]
 			Expect(eng.Lang).To(Equal("eng"))
 			Expect(eng.Synced).To(BeTrue())
-			Expect(eng.Line[0].Start).To(Equal(gg.P(int64(3000))))
+			Expect(eng.Line[0].Start).To(Equal(gg.P(int64(2000))))
 			Expect(eng.Line[0].Value).To(Equal("Line one"))
 			Expect(eng.Line[1].Start).To(Equal(gg.P(int64(4517))))
 			Expect(eng.Line[1].Value).To(Equal("Line two\nwith break"))

@@ -870,7 +870,7 @@ func resolveTTMLTime(value int64, kind ttmlTimeKind, base int64, parent ttmlTimi
 		offset := base + value
 
 		// No parent timing context → no reference frame for offsets.
-		if !parent.hasBegin && !parent.hasEnd && base == 0 {
+		if !parent.hasBegin && !parent.hasEnd {
 			return absolute
 		}
 
