@@ -91,6 +91,7 @@ type configOptions struct {
 	DefaultLanguage                 string
 	DefaultUIVolume                 int
 	UISearchDebounceMs              int
+	UICoverArtSize                  int
 	EnableReplayGain                bool
 	EnableCoverAnimation            bool
 	EnableNowPlaying                bool
@@ -425,6 +426,13 @@ func Load(noConfigDump bool) {
 	// Removed options
 	logRemovedOptions("Spotify.ID", "Spotify.Secret")
 
+	// Validate other options
+	if Server.UICoverArtSize < 200 || Server.UICoverArtSize > 1200 {
+		newValue := max(200, min(1200, Server.UICoverArtSize))
+		log.Warn("UICoverArtSize must be between 200 and 1200, clamping", "value", Server.UICoverArtSize, "newValue", newValue)
+		Server.UICoverArtSize = newValue
+	}
+
 	// Call init hooks
 	for _, hook := range hooks {
 		hook()
@@ -733,6 +741,7 @@ func setViperDefaults() {
 	viper.SetDefault("defaultlanguage", "")
 	viper.SetDefault("defaultuivolume", consts.DefaultUIVolume)
 	viper.SetDefault("uisearchdebouncems", consts.DefaultUISearchDebounceMs)
+	viper.SetDefault("uicoverartsize", consts.DefaultUICoverArtSize)
 	viper.SetDefault("enablereplaygain", true)
 	viper.SetDefault("enablecoveranimation", true)
 	viper.SetDefault("enablenowplaying", true)
@@ -815,7 +824,7 @@ func setViperDefaults() {
 	viper.SetDefault("devuishowconfig", true)
 	viper.SetDefault("devneweventstream", true)
 	viper.SetDefault("devoffsetoptimize", 50000)
-	viper.SetDefault("devartworkmaxrequests", max(4, runtime.NumCPU()))
+	viper.SetDefault("devartworkmaxrequests", max(2, runtime.NumCPU()/2))
 	viper.SetDefault("devartworkthrottlebackloglimit", consts.RequestThrottleBacklogLimit)
 	viper.SetDefault("devartworkthrottlebacklogtimeout", consts.RequestThrottleBacklogTimeout)
 	viper.SetDefault("devartistinfotimetolive", consts.ArtistInfoTimeToLive)
