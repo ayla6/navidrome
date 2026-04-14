@@ -26,6 +26,7 @@ import {
   hasStructuredLyricContent,
   resolveKaraokeTokenWindow,
   resolveLayerLineForMain,
+  utf8ByteRangeToCodeUnitRange,
 } from './lyrics'
 
 const KARAOKE_RENDER_LEAD_MS = 24
@@ -635,89 +636,50 @@ const buildSegmentsFromLine = (line) => {
   }
 
   const text = line.value || ''
-  const matchedSegments = []
-  const fallbackSegments = []
+  const segments = []
   let cursor = 0
-  let allMatched = text.length > 0
-  let anyMatched = false
-
-  const pushFallbackSeparatorIfNeeded = (nextTokenText) => {
-    if (fallbackSegments.length === 0) {
-      return
-    }
-    const prevText = fallbackSegments[fallbackSegments.length - 1].text || ''
-    if (!prevText || !nextTokenText) {
-      return
-    }
-    if (/\s$/.test(prevText) || /^\s/.test(nextTokenText)) {
-      return
-    }
-    if (/[A-Za-z0-9]$/.test(prevText) && /^[A-Za-z0-9]/.test(nextTokenText)) {
-      fallbackSegments.push({ text: ' ', token: null, tokenIndex: -1 })
-    }
-  }
 
   for (let tokenIndex = 0; tokenIndex < line.tokens.length; tokenIndex += 1) {
     const token = line.tokens[tokenIndex]
-    const tokenText = token.value || ''
-    if (!tokenText) {
-      continue
-    }
 
-    pushFallbackSeparatorIfNeeded(tokenText)
-    fallbackSegments.push({ text: tokenText, token, tokenIndex })
+    const byteRange = utf8ByteRangeToCodeUnitRange(
+      text,
+      token.byteStart,
+      token.byteEnd,
+    )
 
-    if (!text) {
-      allMatched = false
-      continue
-    }
-
-    const foundAt = text.indexOf(tokenText, cursor)
-    const normalizedFoundAt =
-      foundAt >= 0
-        ? foundAt
-        : text.toLowerCase().indexOf(tokenText.toLowerCase(), cursor)
-
-    if (normalizedFoundAt >= 0) {
-      anyMatched = true
-      if (normalizedFoundAt > cursor) {
-        matchedSegments.push({
-          text: text.slice(cursor, normalizedFoundAt),
+    if (byteRange) {
+      if (byteRange.start > cursor) {
+        segments.push({
+          text: text.slice(cursor, byteRange.start),
           token: null,
           tokenIndex: -1,
         })
       }
-      const matchedTokenText = text.slice(
-        normalizedFoundAt,
-        normalizedFoundAt + tokenText.length,
-      )
-      matchedSegments.push({
-        text: matchedTokenText || tokenText,
+      segments.push({
+        text: byteRange.text,
         token,
         tokenIndex,
       })
-      cursor = normalizedFoundAt + tokenText.length
+      cursor = byteRange.end
     } else {
-      allMatched = false
-    }
-  }
-
-  if (allMatched && anyMatched) {
-    if (cursor < text.length) {
-      matchedSegments.push({
-        text: text.slice(cursor),
-        token: null,
-        tokenIndex: -1,
+      segments.push({
+        text: token.value || '',
+        token,
+        tokenIndex,
       })
     }
-    return matchedSegments
   }
 
-  if (fallbackSegments.length > 0) {
-    return fallbackSegments
+  if (cursor < text.length) {
+    segments.push({
+      text: text.slice(cursor),
+      token: null,
+      tokenIndex: -1,
+    })
   }
 
-  return [{ text, token: null, tokenIndex: -1 }]
+  return segments
 }
 
 const getLineRenderWindow = (line, nextLineStart) => {

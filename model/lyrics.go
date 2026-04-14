@@ -12,10 +12,12 @@ import (
 )
 
 type Cue struct {
-	Start   *int64 `structs:"start,omitempty"   json:"start,omitempty"`
-	End     *int64 `structs:"end,omitempty"     json:"end,omitempty"`
-	Value   string `structs:"value"             json:"value"`
-	AgentID string `structs:"agentId,omitempty" json:"agentId,omitempty"`
+	Start     *int64 `structs:"start,omitempty"   json:"start,omitempty"`
+	End       *int64 `structs:"end,omitempty"     json:"end,omitempty"`
+	Value     string `structs:"value"             json:"value"`
+	ByteStart int    `structs:"byteStart"         json:"byteStart"`
+	ByteEnd   int    `structs:"byteEnd"           json:"byteEnd"`
+	AgentID   string `structs:"agentId,omitempty" json:"agentId,omitempty"`
 }
 
 type Agent struct {
@@ -127,14 +129,10 @@ func ToLyrics(language, text string) (*Lyrics, error) {
 
 			if validLine {
 				for idx := range timestamps {
-					cues := parseEnhancedCues(priorLine)
-					value := priorLine
-					if cues != nil {
-						value = stripEnhancedMarkers(value)
-					}
+					value, cues := parseEnhancedLine(priorLine)
 					structuredLines = append(structuredLines, Line{
 						Start: &timestamps[idx],
-						Value: strings.TrimSpace(value),
+						Value: value,
 						Cue:   cues,
 					})
 				}
@@ -181,14 +179,10 @@ func ToLyrics(language, text string) (*Lyrics, error) {
 
 	if validLine {
 		for idx := range timestamps {
-			cues := parseEnhancedCues(priorLine)
-			value := priorLine
-			if cues != nil {
-				value = stripEnhancedMarkers(value)
-			}
+			value, cues := parseEnhancedLine(priorLine)
 			structuredLines = append(structuredLines, Line{
 				Start: &timestamps[idx],
-				Value: strings.TrimSpace(value),
+				Value: value,
 				Cue:   cues,
 			})
 		}
@@ -213,21 +207,22 @@ func ToLyrics(language, text string) (*Lyrics, error) {
 	return &lyrics, nil
 }
 
-// parseEnhancedCues extracts word-level timing cues from Enhanced LRC inline markers.
-// Format: <mm:ss.mm>word <mm:ss.mm>word ...
-// Returns nil if no inline markers are found.
-func parseEnhancedCues(text string) []Cue {
+// parseEnhancedLine extracts word-level timing cues from Enhanced LRC inline markers
+// and computes UTF-8 byte offsets against the final stripped line value.
+func parseEnhancedLine(text string) (string, []Cue) {
 	matches := enhancedLRCRegex.FindAllStringSubmatchIndex(text, -1)
 	if len(matches) == 0 {
-		return nil
+		return strings.TrimSpace(text), nil
 	}
 
 	type segment struct {
-		start int64
-		text  string
+		start    int64
+		rawStart int
+		rawEnd   int
 	}
 
 	segments := make([]segment, 0, len(matches))
+	var rawValue strings.Builder
 	for i, match := range matches {
 		timeMs, err := parseTime(
 			// Rewrite <...> as [...] so parseTime can handle it with the same logic
@@ -258,22 +253,62 @@ func parseEnhancedCues(text string) []Cue {
 		if word == "" {
 			continue
 		}
-		segments = append(segments, segment{start: timeMs, text: word})
+
+		rawStart := rawValue.Len()
+		rawValue.WriteString(word)
+		segments = append(segments, segment{
+			start:    timeMs,
+			rawStart: rawStart,
+			rawEnd:   rawValue.Len(),
+		})
 	}
 
 	if len(segments) == 0 {
-		return nil
+		return strings.TrimSpace(stripEnhancedMarkers(text)), nil
 	}
 
-	cues := make([]Cue, len(segments))
-	for i, seg := range segments {
-		start := seg.start
-		cues[i] = Cue{
-			Start: &start,
-			Value: seg.text,
-		}
+	finalRaw := rawValue.String()
+	// To match strings.TrimSpace(value) behavior while tracking byte offsets,
+	// we calculate how many bytes are trimmed from left and right.
+	leftTrimBytes := len(finalRaw) - len(strings.TrimLeft(finalRaw, " \t\n\r"))
+	rightTrimBytes := len(finalRaw) - len(strings.TrimRight(finalRaw, " \t\n\r"))
+	trimmedEnd := len(finalRaw) - rightTrimBytes
+	if trimmedEnd < leftTrimBytes {
+		trimmedEnd = leftTrimBytes
 	}
-	return cues
+
+	cues := make([]Cue, 0, len(segments))
+	for _, seg := range segments {
+		start := seg.start
+		byteStart := max(seg.rawStart, leftTrimBytes)
+		byteEnd := min(seg.rawEnd, trimmedEnd)
+		if byteStart >= byteEnd {
+			continue
+		}
+
+		cues = append(cues, Cue{
+			Start:     &start,
+			Value:     finalRaw[byteStart:byteEnd],
+			ByteStart: byteStart - leftTrimBytes,
+			ByteEnd:   byteEnd - leftTrimBytes - 1, // inclusive
+		})
+	}
+
+	return strings.TrimSpace(finalRaw), cues
+}
+
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+func max(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
 }
 
 // adjustGroup remaps a capture group index from the original match to our rewritten "[...]" string.

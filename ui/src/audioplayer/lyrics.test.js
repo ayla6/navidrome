@@ -13,6 +13,8 @@ import {
   selectLyricLayers,
   structuredLyricsToLrc,
   structuredLyricToLrc,
+  utf8ByteOffsetToCodeUnitIndex,
+  utf8ByteRangeToCodeUnitRange,
 } from './lyrics'
 
 describe('lyrics helpers', () => {
@@ -392,6 +394,8 @@ describe('lyrics helpers', () => {
           {
             start: 1000,
             end: 1500,
+            byteStart: null,
+            byteEnd: null,
             value: 'Hello',
             role: '',
             agentId: 'lead',
@@ -401,6 +405,8 @@ describe('lyrics helpers', () => {
           {
             start: 2000,
             end: 2500,
+            byteStart: null,
+            byteEnd: null,
             value: 'world',
             role: 'bg',
             agentId: 'backing',
@@ -600,5 +606,50 @@ describe('lyrics helpers', () => {
         { index: 0, start: 1000, value: 'Timed line', tokens: [] },
       ]),
     ).toBe(true)
+  })
+
+  describe('UTF-8 to Code Unit mapping', () => {
+    it('maps ASCII characters 1:1', () => {
+      const text = 'hello'
+      expect(utf8ByteOffsetToCodeUnitIndex(text, 0)).toBe(0)
+      expect(utf8ByteOffsetToCodeUnitIndex(text, 1)).toBe(1)
+      expect(utf8ByteOffsetToCodeUnitIndex(text, 5)).toBe(5)
+    })
+
+    it('maps multi-byte characters (Japanese)', () => {
+      // こ (3 bytes) ん (3 bytes) に (3 bytes)
+      const text = 'こんにちは'
+      expect(utf8ByteOffsetToCodeUnitIndex(text, 0)).toBe(0)
+      expect(utf8ByteOffsetToCodeUnitIndex(text, 3)).toBe(1)
+      expect(utf8ByteOffsetToCodeUnitIndex(text, 6)).toBe(2)
+      expect(utf8ByteOffsetToCodeUnitIndex(text, 9)).toBe(3)
+    })
+
+    it('maps 4-byte characters (Emoji)', () => {
+      // 🌍 (4 bytes in UTF-8, 2 code units in JS UTF-16)
+      const text = '🌍world'
+      expect(utf8ByteOffsetToCodeUnitIndex(text, 0)).toBe(0)
+      expect(utf8ByteOffsetToCodeUnitIndex(text, 4)).toBe(2)
+      expect(utf8ByteOffsetToCodeUnitIndex(text, 5)).toBe(3)
+    })
+
+    it('slices ranges correctly', () => {
+      const text = 'A🌍BC'
+      // A (1b), 🌍 (4b), B (1b), C (1b)
+      // total bytes: 1+4+1+1 = 7
+      // 🌍 is at byte offset 1 to 4
+      const range = utf8ByteRangeToCodeUnitRange(text, 1, 4)
+      expect(range.text).toBe('🌍')
+      expect(range.start).toBe(1)
+      expect(range.end).toBe(3)
+    })
+
+    it('handles out of bounds and invalid inputs', () => {
+      const text = 'abc'
+      expect(utf8ByteOffsetToCodeUnitIndex(text, 10)).toBe(3)
+      expect(utf8ByteOffsetToCodeUnitIndex(null, 1)).toBe(0)
+      expect(utf8ByteRangeToCodeUnitRange(text, 5, 2)).toBeNull()
+      expect(utf8ByteRangeToCodeUnitRange(text, -1, 1)).toBeNull()
+    })
   })
 })

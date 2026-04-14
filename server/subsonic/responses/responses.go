@@ -538,9 +538,11 @@ type Line struct {
 }
 
 type LyricCue struct {
-	Start int64  `xml:"start,attr"           json:"start"`
-	End   *int64 `xml:"end,attr,omitempty"   json:"end,omitempty"`
-	Value string `xml:",chardata"            json:"value"`
+	Start     int64  `xml:"start,attr"           json:"start"`
+	End       *int64 `xml:"end,attr,omitempty"   json:"end,omitempty"`
+	Value     string `xml:",chardata"            json:"value"`
+	ByteStart int    `xml:"byteStart,attr"       json:"byteStart"`
+	ByteEnd   int    `xml:"byteEnd,attr"         json:"byteEnd"`
 }
 
 type Agent struct {

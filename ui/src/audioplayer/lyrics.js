@@ -54,6 +54,65 @@ const preferTimedLyrics = (lyrics) => {
   return timed.length > 0 ? timed : lyrics
 }
 
+const utf8BytesForCodePoint = (codePoint) => {
+  if (codePoint < 0x80) return 1
+  if (codePoint < 0x800) return 2
+  if (codePoint < 0x10000) return 3
+  return 4
+}
+
+const toByteOffset = (val) => {
+  const numeric = typeof val === 'number' ? val : parseInt(val, 10)
+  return Number.isFinite(numeric) ? numeric : null
+}
+
+export const utf8ByteOffsetToCodeUnitIndex = (text, target) => {
+  if (typeof text !== 'string' || target <= 0) {
+    return 0
+  }
+
+  let byteOffset = 0
+  let index = 0
+  while (index < text.length) {
+    if (byteOffset >= target) {
+      return index
+    }
+    const codePoint = text.codePointAt(index)
+    byteOffset += utf8BytesForCodePoint(codePoint)
+    index += codePoint > 0xffff ? 2 : 1
+  }
+
+  return text.length
+}
+
+export const utf8ByteRangeToCodeUnitRange = (text, byteStart, byteEnd) => {
+  if (typeof text !== 'string') {
+    return null
+  }
+
+  const start = toByteOffset(byteStart)
+  const end = toByteOffset(byteEnd)
+  if (start === null || end === null || start < 0 || end < start) {
+    return null
+  }
+
+  const startIndex = utf8ByteOffsetToCodeUnitIndex(text, start)
+  const endIndex = utf8ByteOffsetToCodeUnitIndex(text, end + 1)
+  if (
+    startIndex >= endIndex ||
+    startIndex > text.length ||
+    endIndex > text.length
+  ) {
+    return null
+  }
+
+  return {
+    start: startIndex,
+    end: endIndex,
+    text: text.slice(startIndex, endIndex),
+  }
+}
+
 const normalizeToken = (token) => {
   if (!token) {
     return null
@@ -65,6 +124,8 @@ const normalizeToken = (token) => {
   return {
     start: toTime(token.start),
     end: toTime(token.end),
+    byteStart: toByteOffset(token.byteStart),
+    byteEnd: toByteOffset(token.byteEnd),
     value,
   }
 }

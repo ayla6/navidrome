@@ -336,8 +336,12 @@ func (p *ttmlParser) parseMetadataText(start xml.StartElement, parent ttmlTiming
 }
 
 func (p *ttmlParser) parseParagraph(parent ttmlTimingContext) (string, []model.Cue, error) {
-	var text strings.Builder
-	var tokens []model.Cue
+	var rawText strings.Builder
+	type tokenRef struct {
+		rawOffset int
+		cue       model.Cue
+	}
+	var refs []tokenRef
 
 	for {
 		token, err := p.decoder.Token()
@@ -347,18 +351,43 @@ func (p *ttmlParser) parseParagraph(parent ttmlTimingContext) (string, []model.C
 
 		switch t := token.(type) {
 		case xml.StartElement:
+			currentRawOffset := rawText.Len()
 			value, inlineTokens, err := p.parseInlineElement(t, parent)
 			if err != nil {
 				return "", nil, err
 			}
-			text.WriteString(value)
-			tokens = append(tokens, inlineTokens...)
+			rawText.WriteString(value)
+			for _, it := range inlineTokens {
+				refs = append(refs, tokenRef{
+					rawOffset: currentRawOffset + it.ByteStart,
+					cue:       it,
+				})
+			}
 		case xml.EndElement:
 			if strings.EqualFold(t.Name.Local, "p") {
-				return sanitizeTTMLText(text.String()), tokens, nil
+				finalText := sanitizeTTMLText(rawText.String())
+				tokens := make([]model.Cue, 0, len(refs))
+
+				// Second pass: find sanitized offsets
+				// Since sanitizeTTMLText is mostly trimming and replacing whitespace,
+				// we'll find each token's Value in the finalText, starting from the last found position.
+				cursor := 0
+				for _, ref := range refs {
+					cue := ref.cue
+					foundIdx := strings.Index(finalText[cursor:], cue.Value)
+					if foundIdx != -1 {
+						foundIdx += cursor
+						cue.ByteStart = foundIdx
+						cue.ByteEnd = foundIdx + len(cue.Value) - 1
+						tokens = append(tokens, cue)
+						cursor = cue.ByteEnd + 1
+					}
+				}
+
+				return finalText, tokens, nil
 			}
 		case xml.CharData:
-			text.WriteString(string(t))
+			rawText.WriteString(string(t))
 		}
 	}
 }
@@ -375,8 +404,12 @@ func (p *ttmlParser) parseInlineElement(start xml.StartElement, parent ttmlTimin
 	_, hasDur := attrValue(start.Attr, "dur")
 	hasOwnTiming := hasBegin || hasEnd || hasDur
 
-	var text strings.Builder
-	var tokens []model.Cue
+	var rawText strings.Builder
+	type tokenRef struct {
+		rawOffset int
+		cue       model.Cue
+	}
+	var refs []tokenRef
 
 	for {
 		token, err := p.decoder.Token()
@@ -386,23 +419,34 @@ func (p *ttmlParser) parseInlineElement(start xml.StartElement, parent ttmlTimin
 
 		switch t := token.(type) {
 		case xml.StartElement:
+			currentRawOffset := rawText.Len()
 			value, inlineTokens, err := p.parseInlineElement(t, ctx)
 			if err != nil {
 				return "", nil, err
 			}
-			text.WriteString(value)
-			tokens = append(tokens, inlineTokens...)
+			rawText.WriteString(value)
+			for _, it := range inlineTokens {
+				refs = append(refs, tokenRef{
+					rawOffset: currentRawOffset + it.ByteStart,
+					cue:       it,
+				})
+			}
 		case xml.EndElement:
 			if !strings.EqualFold(t.Name.Local, start.Name.Local) {
 				continue
 			}
 
-			value := text.String()
-			tokenText := sanitizeTTMLText(value)
-			if local == "span" && hasOwnTiming && !ctx.invalid && tokenText != "" && len(tokens) == 0 {
+			rawVal := rawText.String()
+			tokenText := sanitizeTTMLText(rawVal)
+
+			var tokens []model.Cue
+			if local == "span" && hasOwnTiming && !ctx.invalid && tokenText != "" && len(refs) == 0 {
 				parsedToken := model.Cue{
 					Value:   tokenText,
 					AgentID: p.resolveCueAgentID(ctx),
+					// Relative to this element's raw content
+					ByteStart: 0,
+					ByteEnd:   len(tokenText) - 1,
 				}
 				if ctx.hasBegin {
 					startMs := ctx.begin
@@ -413,11 +457,19 @@ func (p *ttmlParser) parseInlineElement(start xml.StartElement, parent ttmlTimin
 					parsedToken.End = &endMs
 				}
 				tokens = append(tokens, parsedToken)
+			} else {
+				// Relativize child tokens to this element's raw start
+				for _, r := range refs {
+					cue := r.cue
+					cue.ByteStart = r.rawOffset
+					cue.ByteEnd = r.rawOffset + (r.cue.ByteEnd - r.cue.ByteStart)
+					tokens = append(tokens, cue)
+				}
 			}
 
-			return value, tokens, nil
+			return rawVal, tokens, nil
 		case xml.CharData:
-			text.WriteString(string(t))
+			rawText.WriteString(string(t))
 		}
 	}
 }

@@ -130,9 +130,9 @@ var _ = Describe("ToLyrics", func() {
 		Expect(line0.End).To(Equal(&t3000))
 		Expect(line0.Value).To(Equal("Some lyrics here"))
 		Expect(line0.Cue).To(Equal([]Cue{
-			{Start: &t1000, End: &t1500, Value: "Some "},
-			{Start: &t1500, End: &t2000, Value: "lyrics "},
-			{Start: &t2000, End: &t3000, Value: "here"},
+			{Start: &t1000, End: &t1500, Value: "Some ", ByteStart: 0, ByteEnd: 4},
+			{Start: &t1500, End: &t2000, Value: "lyrics ", ByteStart: 5, ByteEnd: 11},
+			{Start: &t2000, End: &t3000, Value: "here", ByteStart: 12, ByteEnd: 15},
 		}))
 
 		line1 := lyrics.Line[1]
@@ -140,8 +140,8 @@ var _ = Describe("ToLyrics", func() {
 		Expect(line1.End).To(Equal(&t3500))
 		Expect(line1.Value).To(Equal("More words"))
 		Expect(line1.Cue).To(Equal([]Cue{
-			{Start: &t3000, Value: "More "},
-			{Start: &t3500, Value: "words"},
+			{Start: &t3000, Value: "More ", ByteStart: 0, ByteEnd: 4},
+			{Start: &t3500, Value: "words", ByteStart: 5, ByteEnd: 9},
 		}))
 
 		Expect(line1.Cue[1].End).To(BeNil())
@@ -166,8 +166,8 @@ var _ = Describe("ToLyrics", func() {
 		t3000 := int64(3000)
 
 		Expect(lyrics.Line[0].Cue).To(Equal([]Cue{
-			{Start: &t1000, End: &t1500, Value: "Some "},
-			{Start: &t1500, End: &t3000, Value: "lyrics"},
+			{Start: &t1000, End: &t1500, Value: "Some ", ByteStart: 0, ByteEnd: 4},
+			{Start: &t1500, End: &t3000, Value: "lyrics", ByteStart: 5, ByteEnd: 10},
 		}))
 		Expect(lyrics.Line[0].Value).To(Equal("Some lyrics"))
 		Expect(lyrics.Line[0].End).To(Equal(&t3000))
@@ -176,8 +176,8 @@ var _ = Describe("ToLyrics", func() {
 		Expect(lyrics.Line[1].Value).To(Equal("Plain line"))
 
 		Expect(lyrics.Line[2].Cue).To(Equal([]Cue{
-			{Start: &t5000, Value: "More "},
-			{Start: &t5500, Value: "words"},
+			{Start: &t5000, Value: "More ", ByteStart: 0, ByteEnd: 4},
+			{Start: &t5500, Value: "words", ByteStart: 5, ByteEnd: 9},
 		}))
 		Expect(lyrics.Line[2].Value).To(Equal("More words"))
 	})
