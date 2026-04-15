@@ -633,6 +633,167 @@ var _ = Describe("MediaRetrievalController", func() {
 				},
 			})
 		})
+
+		It("should keep enhanced line-level lyrics when no cue data is available", func() {
+			r := newGetRequest("id=1&enhanced=true")
+
+			lineStart := int64(1000)
+			lineEnd := int64(3000)
+			lyricsJSON, err := json.Marshal(model.LyricList{
+				{
+					Kind:   "main",
+					Lang:   "eng",
+					Synced: true,
+					Line: []model.Line{
+						{
+							Start: &lineStart,
+							End:   &lineEnd,
+							Value: "Line without word timing",
+						},
+					},
+				},
+			})
+			Expect(err).ToNot(HaveOccurred())
+
+			mockRepo.SetData(model.MediaFiles{
+				{
+					ID:     "1",
+					Artist: "Rick Astley",
+					Title:  "Never Gonna Give You Up",
+					Lyrics: string(lyricsJSON),
+				},
+			})
+
+			response, err := router.GetLyricsBySongId(r)
+			Expect(err).ToNot(HaveOccurred())
+			compareResponses(response.LyricsList, responses.LyricsList{
+				StructuredLyrics: responses.StructuredLyrics{
+					{
+						DisplayArtist: "Rick Astley",
+						DisplayTitle:  "Never Gonna Give You Up",
+						Kind:          "main",
+						Lang:          "eng",
+						Synced:        true,
+						Line: []responses.Line{
+							{
+								Start: &lineStart,
+								Value: "Line without word timing",
+							},
+						},
+					},
+				},
+			})
+		})
+
+		It("should return required cue byte offsets for ambiguous and multibyte cue lines", func() {
+			r := newGetRequest("id=1&enhanced=true")
+
+			asciiLineStart := int64(0)
+			asciiLineEnd := int64(2400)
+			asciiCueStartA := int64(0)
+			asciiCueEndA := int64(300)
+			asciiCueStartB := int64(900)
+			asciiCueEndB := int64(1300)
+			asciiCueStartC := int64(1300)
+			asciiCueEndC := int64(1600)
+			asciiCueStartD := int64(1600)
+
+			utfLineStart := int64(2747)
+			utfLineEnd := int64(6214)
+			utfCueStartA := int64(2747)
+			utfCueEndA := int64(3018)
+			utfCueStartB := int64(3018)
+			utfCueEndB := int64(3179)
+			utfCueStartC := int64(3582)
+			utfCueEndC := int64(4100)
+			utfCueStartD := int64(4500)
+			utfCueEndD := int64(6214)
+
+			lyricsJSON, err := json.Marshal(model.LyricList{
+				{
+					Lang:   "eng",
+					Synced: true,
+					Line: []model.Line{
+						{
+							Start: &asciiLineStart,
+							End:   &asciiLineEnd,
+							Value: "Oh love love me tonight",
+							Cue: []model.Cue{
+								{Start: &asciiCueStartA, End: &asciiCueEndA, Value: "Oh", ByteStart: 0, ByteEnd: 1},
+								{Start: &asciiCueStartB, End: &asciiCueEndB, Value: "love", ByteStart: 8, ByteEnd: 11},
+								{Start: &asciiCueStartC, End: &asciiCueEndC, Value: "me", ByteStart: 13, ByteEnd: 14},
+								{Start: &asciiCueStartD, Value: "tonight", ByteStart: 16, ByteEnd: 22},
+							},
+						},
+						{
+							Start: &utfLineStart,
+							End:   &utfLineEnd,
+							Value: "눈을 뜬 순간",
+							Cue: []model.Cue{
+								{Start: &utfCueStartA, End: &utfCueEndA, Value: "눈", ByteStart: 0, ByteEnd: 2},
+								{Start: &utfCueStartB, End: &utfCueEndB, Value: "을", ByteStart: 3, ByteEnd: 5},
+								{Start: &utfCueStartC, End: &utfCueEndC, Value: "뜬", ByteStart: 7, ByteEnd: 9},
+								{Start: &utfCueStartD, End: &utfCueEndD, Value: "순간", ByteStart: 11, ByteEnd: 16},
+							},
+						},
+					},
+				},
+			})
+			Expect(err).ToNot(HaveOccurred())
+
+			mockRepo.SetData(model.MediaFiles{
+				{
+					ID:     "1",
+					Artist: "Rick Astley",
+					Title:  "Never Gonna Give You Up",
+					Lyrics: string(lyricsJSON),
+				},
+			})
+
+			response, err := router.GetLyricsBySongId(r)
+			Expect(err).ToNot(HaveOccurred())
+			compareResponses(response.LyricsList, responses.LyricsList{
+				StructuredLyrics: responses.StructuredLyrics{
+					{
+						DisplayArtist: "Rick Astley",
+						DisplayTitle:  "Never Gonna Give You Up",
+						Kind:          "main",
+						Lang:          "eng",
+						Synced:        true,
+						Line: []responses.Line{
+							{Start: &asciiLineStart, Value: "Oh love love me tonight"},
+							{Start: &utfLineStart, Value: "눈을 뜬 순간"},
+						},
+						CueLine: []responses.CueLine{
+							{
+								Index: 0,
+								Start: &asciiLineStart,
+								End:   &asciiLineEnd,
+								Value: "Oh love love me tonight",
+								Cue: []responses.LyricCue{
+									{Start: asciiCueStartA, End: &asciiCueEndA, Value: "Oh", ByteStart: 0, ByteEnd: 1},
+									{Start: asciiCueStartB, End: &asciiCueEndB, Value: "love", ByteStart: 8, ByteEnd: 11},
+									{Start: asciiCueStartC, End: &asciiCueEndC, Value: "me", ByteStart: 13, ByteEnd: 14},
+									{Start: asciiCueStartD, End: &asciiLineEnd, Value: "tonight", ByteStart: 16, ByteEnd: 22},
+								},
+							},
+							{
+								Index: 1,
+								Start: &utfLineStart,
+								End:   &utfLineEnd,
+								Value: "눈을 뜬 순간",
+								Cue: []responses.LyricCue{
+									{Start: utfCueStartA, End: &utfCueEndA, Value: "눈", ByteStart: 0, ByteEnd: 2},
+									{Start: utfCueStartB, End: &utfCueEndB, Value: "을", ByteStart: 3, ByteEnd: 5},
+									{Start: utfCueStartC, End: &utfCueEndC, Value: "뜬", ByteStart: 7, ByteEnd: 9},
+									{Start: utfCueStartD, End: &utfCueEndD, Value: "순간", ByteStart: 11, ByteEnd: 16},
+								},
+							},
+						},
+					},
+				},
+			})
+		})
 	})
 })
 

@@ -2,6 +2,7 @@ import {
   buildHighlightedAuxLine,
   buildHighlightedMainLine,
   buildKaraokeLines,
+  buildKaraokeLinesFromCueLines,
   findLayerLineIndexForMain,
   getActiveKaraokeState,
   getPreferredLyricLanguage,
@@ -416,6 +417,159 @@ describe('lyrics helpers', () => {
         ],
       },
     ])
+  })
+
+  it('builds grouped karaoke lines directly from cue lines', () => {
+    const agentLookup = new Map([
+      ['lead', { id: 'lead', role: 'main', name: 'Lead Vocal' }],
+      ['backing', { id: 'backing', role: 'bg', name: '' }],
+    ])
+
+    const lines = buildKaraokeLinesFromCueLines(
+      [
+        {
+          index: 0,
+          start: 1000,
+          end: 3000,
+          value: 'Hello world',
+          agentId: 'lead',
+          cue: [{ start: 1000, end: 1500, value: 'Hello' }],
+        },
+        {
+          index: 0,
+          start: 1000,
+          end: 3000,
+          value: 'Hello world',
+          agentId: 'backing',
+          cue: [{ start: 2000, end: 2500, value: 'world' }],
+        },
+      ],
+      [{ start: 1000, end: 3000, value: 'Hello world' }],
+      agentLookup,
+    )
+
+    expect(lines).toEqual([
+      {
+        agentId: 'lead',
+        agentName: 'Lead Vocal',
+        agentRole: 'main',
+        index: 0,
+        start: 1000,
+        end: 3000,
+        value: 'Hello world',
+        tokens: [
+          {
+            start: 1000,
+            end: 1500,
+            value: 'Hello',
+            role: '',
+            agentId: 'lead',
+            agentName: 'Lead Vocal',
+            agentRole: 'main',
+          },
+          {
+            start: 2000,
+            end: 2500,
+            value: 'world',
+            role: 'bg',
+            agentId: 'backing',
+            agentName: '',
+            agentRole: 'bg',
+          },
+        ],
+      },
+    ])
+  })
+
+  it('preserves cue byte offsets on karaoke tokens', () => {
+    const lines = buildKaraokeLines({
+      lang: 'eng',
+      synced: true,
+      line: [{ start: 0, end: 2400, value: 'Oh love love me tonight' }],
+      cueLine: [
+        {
+          index: 0,
+          start: 0,
+          end: 2400,
+          value: 'Oh love love me tonight',
+          cue: [
+            { start: 0, end: 300, value: 'Oh', byteStart: 0, byteEnd: 1 },
+            { start: 900, end: 1300, value: 'love', byteStart: 8, byteEnd: 11 },
+            { start: 1300, end: 1600, value: 'me', byteStart: 13, byteEnd: 14 },
+            {
+              start: 1600,
+              end: 2400,
+              value: 'tonight',
+              byteStart: 16,
+              byteEnd: 22,
+            },
+          ],
+        },
+      ],
+    })
+
+    expect(
+      lines[0].tokens.map((token) => [
+        token.value,
+        token.byteStart,
+        token.byteEnd,
+      ]),
+    ).toEqual([
+      ['Oh', 0, 1],
+      ['love', 8, 11],
+      ['me', 13, 14],
+      ['tonight', 16, 22],
+    ])
+  })
+
+  it('preserves whitespace-only cues for exact byte-range rendering', () => {
+    const lines = buildKaraokeLines({
+      lang: 'kor',
+      synced: true,
+      line: [{ start: 0, end: 900, value: '눈을 뜬 순간' }],
+      cueLine: [
+        {
+          index: 0,
+          start: 0,
+          end: 900,
+          value: '눈을 뜬 순간',
+          cue: [
+            { start: 0, end: 150, value: '눈을', byteStart: 0, byteEnd: 5 },
+            { start: 150, end: 250, value: ' ', byteStart: 6, byteEnd: 6 },
+            { start: 250, end: 450, value: '뜬', byteStart: 7, byteEnd: 9 },
+            { start: 450, end: 550, value: ' ', byteStart: 10, byteEnd: 10 },
+            { start: 550, end: 900, value: '순간', byteStart: 11, byteEnd: 16 },
+          ],
+        },
+      ],
+    })
+
+    expect(
+      lines[0].tokens.map((token) => [
+        token.value,
+        token.byteStart,
+        token.byteEnd,
+      ]),
+    ).toEqual([
+      ['눈을', 0, 5],
+      [' ', 6, 6],
+      ['뜬', 7, 9],
+      [' ', 10, 10],
+      ['순간', 11, 16],
+    ])
+  })
+
+  it('maps UTF-8 byte offsets to string ranges for multibyte lyrics', () => {
+    const text = '눈을 뜬 순간'
+
+    expect(utf8ByteOffsetToCodeUnitIndex(text, 0)).toBe(0)
+    expect(utf8ByteOffsetToCodeUnitIndex(text, 3)).toBe(1)
+    expect(utf8ByteOffsetToCodeUnitIndex(text, 7)).toBe(3)
+    expect(utf8ByteRangeToCodeUnitRange(text, 11, 16)).toEqual({
+      start: 5,
+      end: 7,
+      text: '순간',
+    })
   })
 
   it('falls back to legacy cueLine role values when agents are absent', () => {

@@ -1,8 +1,7 @@
-import Button from '@material-ui/core/Button'
 import IconButton from '@material-ui/core/IconButton'
 import Popover from '@material-ui/core/Popover'
 import Slider from '@material-ui/core/Slider'
-import { makeStyles } from '@material-ui/core/styles'
+import { makeStyles, useTheme } from '@material-ui/core/styles'
 import Tooltip from '@material-ui/core/Tooltip'
 import Typography from '@material-ui/core/Typography'
 import CloseIcon from '@material-ui/icons/Close'
@@ -29,7 +28,7 @@ import {
   utf8ByteRangeToCodeUnitRange,
 } from './lyrics'
 
-const KARAOKE_RENDER_LEAD_MS = 24
+const KARAOKE_RENDER_LEAD_MS = 80
 const KARAOKE_CLOCK_DRIFT_RESET_MS = 140
 const KARAOKE_CLOCK_RESET_THRESHOLD_MS = 320
 const KARAOKE_MONOTONIC_JITTER_MS = 60
@@ -48,15 +47,18 @@ const KARAOKE_MAX_LINE_HEIGHT = 2.2
 const KARAOKE_LINE_HEIGHT_STEP = 0.02
 const KARAOKE_GROUP_SPACING_BASE_PX = 14
 const KARAOKE_AUX_LINE_HEIGHT = 1.2
+const KARAOKE_MAIN_INACTIVE_FONT_FACTOR = 0.8
+const KARAOKE_AUX_INACTIVE_FONT_FACTOR = 0.88
 
 const TOKEN_DONE_ALPHA = 1
 const TOKEN_FUTURE_ALPHA = 0.34
 const TOKEN_ACTIVE_ALPHA = 1
+const TOKEN_WIPE_SOFT_SPREAD_PCT = 12
 const TOKEN_WIPE_EDGE_PCT = 8
-const TOKEN_WIPE_GLOW_PCT = 16
 
 const COLOR_PRESETS = [
   { key: 'white', label: 'White', value: 'rgba(255, 255, 255, 0.92)' },
+  { key: 'black', label: 'Black', value: 'rgba(0, 0, 0, 0.87)' },
   { key: 'blue', label: 'Blue', value: 'rgba(120, 160, 220, 0.75)' },
   { key: 'green', label: 'Green', value: 'rgba(100, 200, 130, 0.7)' },
   { key: 'pink', label: 'Pink', value: 'rgba(240, 140, 170, 0.75)' },
@@ -76,11 +78,11 @@ const DEFAULT_LYRICS_SETTINGS = {
 
 const SETTINGS_STORAGE_KEY = 'karaoke-lyrics-settings'
 
-const createDefaultLyricsSettings = () => ({
+const createDefaultLyricsSettings = (isDark = true) => ({
   lineHeight: KARAOKE_DEFAULT_LINE_HEIGHT,
   overlayHeight: KARAOKE_DEFAULT_HEIGHT_PX,
   tr: { ...DEFAULT_LYRICS_SETTINGS.tr },
-  main: { ...DEFAULT_LYRICS_SETTINGS.main },
+  main: { ...DEFAULT_LYRICS_SETTINGS.main, colorKey: isDark ? 'white' : 'black' },
   pr: { ...DEFAULT_LYRICS_SETTINGS.pr },
 })
 
@@ -134,292 +136,322 @@ const saveLyricsSettings = (settings) => {
 const getColorValue = (colorKey) =>
   COLOR_PRESETS.find((c) => c.key === colorKey)?.value || COLOR_PRESETS[0].value
 
-const useStyles = makeStyles((theme) => ({
-  overlay: {
-    position: 'fixed',
-    left: '50%',
-    bottom: 100,
-    transform: 'translateX(-50%)',
-    zIndex: 1400,
-    width: 'min(1000px, calc(100vw - 32px))',
-    minHeight: KARAOKE_MIN_HEIGHT_PX,
-    background: 'rgba(6, 8, 12, 0.9)',
-    borderRadius: 12,
-    border: '1px solid rgba(255, 255, 255, 0.12)',
-    boxShadow: '0 18px 48px rgba(0, 0, 0, 0.42)',
-    backdropFilter: 'blur(10px)',
-    color: theme.palette.common.white,
-    display: 'flex',
-    flexDirection: 'column',
-    overflow: 'hidden',
-    '@media (max-width:810px)': {
-      bottom: 78,
-      width: 'calc(100vw - 12px)',
-      borderRadius: 8,
-      minHeight: 180,
-      maxHeight: '65vh',
-    },
-  },
-  resizeHandle: {
-    height: 14,
-    cursor: 'ns-resize',
-    flexShrink: 0,
-    position: 'relative',
-    '&::after': {
-      content: '""',
-      position: 'absolute',
+const hexToRgba = (hex, alpha) => {
+  const m = (hex || '').match(/#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})/i)
+  if (m) return `rgba(${parseInt(m[1], 16)}, ${parseInt(m[2], 16)}, ${parseInt(m[3], 16)}, ${alpha})`
+  const rm = (hex || '').match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/)
+  if (rm) return `rgba(${rm[1]}, ${rm[2]}, ${rm[3]}, ${alpha})`
+  return `rgba(48, 48, 48, ${alpha})`
+}
+
+const useStyles = makeStyles((theme) => {
+  const isDark = theme.palette.type === 'dark'
+  const overlayBg = hexToRgba(theme.palette.background.default, 0.85)
+  const primaryMain = theme.palette.primary.main
+  const primaryRgb = (() => {
+    const m = (primaryMain || '').match(/#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})/i)
+    if (m) return [parseInt(m[1], 16), parseInt(m[2], 16), parseInt(m[3], 16)]
+    const rm = (primaryMain || '').match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/)
+    if (rm) return [parseInt(rm[1]), parseInt(rm[2]), parseInt(rm[3])]
+    return [144, 202, 249]
+  })()
+  const textPrimary = isDark ? 'rgba(255, 255, 255, 0.92)' : 'rgba(0, 0, 0, 0.87)'
+  const textSecondary = isDark ? 'rgba(255, 255, 255, 0.55)' : 'rgba(0, 0, 0, 0.54)'
+  const borderSubtle = isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.12)'
+
+  return ({
+    overlay: {
+      position: 'fixed',
       left: '50%',
-      top: 4,
+      bottom: 100,
       transform: 'translateX(-50%)',
-      width: 56,
-      height: 3,
+      zIndex: 1400,
+      width: 'min(1000px, calc(100vw - 32px))',
+      minHeight: KARAOKE_MIN_HEIGHT_PX,
+      background: overlayBg,
+      borderRadius: 12,
+      border: `1px solid ${borderSubtle}`,
+      boxShadow: '0 18px 48px rgba(0, 0, 0, 0.42)',
+      backdropFilter: 'blur(20px)',
+      color: textPrimary,
+      display: 'flex',
+      flexDirection: 'column',
+      overflow: 'hidden',
+      '@media (max-width:810px)': {
+        bottom: 78,
+        width: 'calc(100vw - 12px)',
+        borderRadius: 12,
+        minHeight: 180,
+        maxHeight: '65vh',
+      },
+    },
+    overlayInline: {
+      position: 'absolute',
+      inset: 0,
+      width: '100%',
+      height: '100%',
+      minHeight: 0,
+      maxHeight: '100%',
+      transform: 'none',
+      borderRadius: 'inherit',
+      border: 'none',
+      boxShadow: 'none',
+      background: 'transparent',
+      backdropFilter: 'blur(16px)',
+      WebkitBackdropFilter: 'blur(16px)',
+      zIndex: 1,
+    },
+    resizeHandle: {
+      height: 14,
+      cursor: 'ns-resize',
+      flexShrink: 0,
+      position: 'relative',
+      '&::after': {
+        content: '""',
+        position: 'absolute',
+        left: '50%',
+        top: 4,
+        transform: 'translateX(-50%)',
+        width: 56,
+        height: 3,
+        borderRadius: 999,
+        background: `rgba(${primaryRgb.join(', ')}, 0.22)`,
+      },
+      '@media (max-width:810px)': {
+        display: 'none',
+      },
+    },
+    header: {
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: theme.spacing(1),
+      padding: theme.spacing(0.3, 1.3, 0.4, 1.3),
+    },
+    headerLeft: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: theme.spacing(1),
+      minWidth: 0,
+    },
+    languageBadges: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: theme.spacing(0.5),
+      flexWrap: 'wrap',
+      minWidth: 0,
+    },
+    languageBadge: {
+      display: 'inline-flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: theme.spacing(0.35),
+      padding: theme.spacing(0.2, 0.7),
       borderRadius: 999,
-      background: 'rgba(255, 255, 255, 0.22)',
+      border: `1px solid ${borderSubtle}`,
+      background: isDark ? 'rgba(15, 23, 42, 0.42)' : 'rgba(0, 0, 0, 0.06)',
+      color: isDark ? 'rgba(226, 232, 240, 0.8)' : 'rgba(0, 0, 0, 0.6)',
+      fontSize: 10,
+      lineHeight: 1,
+      letterSpacing: '0.04em',
+      whiteSpace: 'nowrap',
+      transition: `all ${KARAOKE_ANIMATION_MS}ms ease-in-out`,
+      userSelect: 'none',
     },
-    '@media (max-width:810px)': {
-      display: 'none',
+    languageBadgeToggle: {
+      cursor: 'pointer',
+      '&:hover': {
+        borderColor: `rgba(${primaryRgb.join(', ')}, 0.35)`,
+        background: isDark ? 'rgba(15, 23, 42, 0.56)' : 'rgba(0, 0, 0, 0.1)',
+      },
     },
-  },
-  header: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: theme.spacing(1),
-    padding: theme.spacing(0.3, 1.3, 0.4, 1.3),
-  },
-  headerLeft: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: theme.spacing(1),
-    minWidth: 0,
-  },
-  languageBadges: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: theme.spacing(0.5),
-    flexWrap: 'wrap',
-    minWidth: 0,
-  },
-  languageBadge: {
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: theme.spacing(0.35),
-    padding: theme.spacing(0.2, 0.7),
-    borderRadius: 999,
-    border: '1px solid rgba(148, 163, 184, 0.28)',
-    background: 'rgba(15, 23, 42, 0.42)',
-    color: 'rgba(226, 232, 240, 0.8)',
-    fontSize: 10,
-    letterSpacing: '0.04em',
-    whiteSpace: 'nowrap',
-  },
-  languageBadgeActive: {
-    borderColor: 'rgba(148, 163, 184, 0.46)',
-    background: 'rgba(30, 41, 59, 0.56)',
-    color: 'rgba(248, 250, 252, 0.94)',
-  },
-  languageBadgeLabel: {
-    fontWeight: 700,
-    textTransform: 'uppercase',
-    opacity: 0.78,
-  },
-  languageBadgeValue: {
-    opacity: 0.9,
-  },
-  layerControls: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: theme.spacing(0.5),
-  },
-  layerToggle: {
-    minWidth: 34,
-    minHeight: 24,
-    padding: theme.spacing(0, 0.8),
-    fontSize: 10,
-    letterSpacing: '0.08em',
-    borderRadius: 999,
-    color: 'rgba(203, 213, 225, 0.95)',
-    background: 'rgba(100, 116, 139, 0.26)',
-    border: '1px solid rgba(148, 163, 184, 0.45)',
-    transition: `all ${KARAOKE_ANIMATION_MS}ms ease-in-out`,
-    '&.Mui-disabled': {
-      color: 'rgba(148, 163, 184, 0.45)',
-      borderColor: 'rgba(100, 116, 139, 0.3)',
-      background: 'rgba(71, 85, 105, 0.2)',
+    languageBadgeActive: {
+      borderColor: `rgba(${primaryRgb.join(', ')}, 0.46)`,
+      background: `rgba(${primaryRgb.join(', ')}, 0.18)`,
+      color: isDark ? 'rgba(248, 250, 252, 0.94)' : 'rgba(0, 0, 0, 0.87)',
     },
-  },
-  layerToggleActive: {
-    color: 'rgba(220, 252, 231, 0.98)',
-    borderColor: 'rgba(34, 197, 94, 0.96)',
-    background: 'rgba(34, 197, 94, 0.28)',
-  },
-  closeButton: {
-    color: 'rgba(255, 255, 255, 0.72)',
-  },
-  lineGroup: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    gap: theme.spacing(0.35),
-  },
-  inlineTr: {
-    margin: 0,
-    textAlign: 'center',
-    fontWeight: 400,
-    lineHeight: KARAOKE_AUX_LINE_HEIGHT,
-    letterSpacing: '0.01em',
-    transition: `opacity ${KARAOKE_ANIMATION_MS}ms ease-in-out, font-size ${KARAOKE_ANIMATION_MS}ms ease-in-out`,
-  },
-  inlinePr: {
-    margin: 0,
-    textAlign: 'center',
-    fontWeight: 400,
-    lineHeight: KARAOKE_AUX_LINE_HEIGHT,
-    letterSpacing: '0.01em',
-    transition: `opacity ${KARAOKE_ANIMATION_MS}ms ease-in-out, font-size ${KARAOKE_ANIMATION_MS}ms ease-in-out`,
-    padding: theme.spacing(0.15, 0.9),
-    borderRadius: 999,
-    background: 'rgba(255, 255, 255, 0.08)',
-    border: '1px solid rgba(255, 255, 255, 0.12)',
-  },
-  body: {
-    padding: theme.spacing(0.5, 2, 1.4, 2),
-    overflowY: 'auto',
-    overflowX: 'hidden',
-    scrollBehavior: 'smooth',
-    flex: 1,
-    overscrollBehavior: 'contain',
-    scrollbarWidth: 'none',
-    msOverflowStyle: 'none',
-    '&::-webkit-scrollbar': {
-      display: 'none',
-      width: 0,
-      height: 0,
+    languageBadgeLabel: {
+      fontWeight: 700,
+      textTransform: 'uppercase',
+      opacity: 0.78,
     },
-    '@media (max-width:810px)': {
-      padding: theme.spacing(0.35, 1.2, 1.2, 1.2),
+    languageBadgeValue: {
+      opacity: 0.9,
     },
-  },
-  lines: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: theme.spacing(1.24),
-    paddingBottom: theme.spacing(1),
-  },
-  line: {
-    margin: 0,
-    fontWeight: 600,
-    lineHeight: 1.24,
-    letterSpacing: '0.01em',
-    textAlign: 'center',
-    color: 'rgba(255, 255, 255, 0.62)',
-    transition: `opacity ${KARAOKE_ANIMATION_MS}ms ease-in-out, color ${KARAOKE_ANIMATION_MS}ms ease-in-out, font-size 280ms ease-in-out`,
-  },
-  token: {
-    display: 'inline-block',
-    whiteSpace: 'pre-wrap',
-    transition: `color ${KARAOKE_ANIMATION_MS}ms ease-in-out, text-shadow ${KARAOKE_ANIMATION_MS}ms ease-in-out`,
-  },
-  settingsButton: {
-    color: 'rgba(255, 255, 255, 0.55)',
-    padding: 4,
-    '&:hover': {
-      color: 'rgba(255, 255, 255, 0.85)',
+    closeButton: {
+      color: textSecondary,
     },
-  },
-  settingsPanel: {
-    background: 'rgba(12, 14, 20, 0.96)',
-    border: '1px solid rgba(255, 255, 255, 0.12)',
-    borderRadius: 10,
-    padding: theme.spacing(1.5, 2),
-    width: 278,
-    backdropFilter: 'blur(12px)',
-  },
-  settingsHeader: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: theme.spacing(1),
-    marginBottom: theme.spacing(1.25),
-  },
-  settingsSection: {
-    marginBottom: theme.spacing(1.2),
-    '&:last-child': {
-      marginBottom: 0,
+    lineGroup: {
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      gap: theme.spacing(0.35),
     },
-  },
-  settingsTitle: {
-    fontSize: 11,
-    fontWeight: 700,
-    letterSpacing: '0.08em',
-    textTransform: 'uppercase',
-    color: 'rgba(255, 255, 255, 0.78)',
-  },
-  settingsLabel: {
-    fontSize: 10,
-    fontWeight: 600,
-    letterSpacing: '0.1em',
-    textTransform: 'uppercase',
-    color: 'rgba(255, 255, 255, 0.55)',
-    marginBottom: 4,
-  },
-  settingsRow: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: theme.spacing(1),
-  },
-  settingsSlider: {
-    flex: 1,
-    color: 'rgba(255, 255, 255, 0.6)',
-    '& .MuiSlider-thumb': {
-      width: 12,
-      height: 12,
+    inlineTr: {
+      margin: 0,
+      textAlign: 'center',
+      fontWeight: 400,
+      lineHeight: KARAOKE_AUX_LINE_HEIGHT,
+      letterSpacing: '0.01em',
+      transition: `opacity ${KARAOKE_ANIMATION_MS}ms ease-in-out, color ${KARAOKE_ANIMATION_MS}ms ease-in-out, font-size 280ms ease-in-out, max-width 280ms ease-in-out`,
     },
-    '& .MuiSlider-rail': {
-      opacity: 0.3,
+    inlinePr: {
+      margin: 0,
+      textAlign: 'center',
+      fontWeight: 400,
+      lineHeight: 1,
+      letterSpacing: '0.01em',
+      transition: `opacity ${KARAOKE_ANIMATION_MS}ms ease-in-out, color ${KARAOKE_ANIMATION_MS}ms ease-in-out, font-size 280ms ease-in-out, max-width 280ms ease-in-out`,
+      padding: theme.spacing(0.15, 0.9),
+      borderRadius: 999,
+      background: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.05)',
+      border: `1px solid ${borderSubtle}`,
     },
-  },
-  settingsSliderValue: {
-    fontSize: 11,
-    color: 'rgba(255, 255, 255, 0.5)',
-    minWidth: 22,
-    textAlign: 'right',
-  },
-  settingsControlLabel: {
-    fontSize: 10,
-    letterSpacing: '0.06em',
-    textTransform: 'uppercase',
-    color: 'rgba(255, 255, 255, 0.45)',
-    minWidth: 72,
-    whiteSpace: 'nowrap',
-  },
-  resetButton: {
-    color: 'rgba(255, 255, 255, 0.58)',
-    padding: 4,
-    '&:hover': {
-      color: 'rgba(255, 255, 255, 0.9)',
+    bodyWrapper: {
+      position: 'relative',
+      flex: 1,
+      overflow: 'hidden',
     },
-  },
-  colorDots: {
-    display: 'flex',
-    gap: 5,
-    marginTop: 4,
-  },
-  colorDot: {
-    width: 16,
-    height: 16,
-    borderRadius: '50%',
-    border: '2px solid transparent',
-    cursor: 'pointer',
-    transition: 'border-color 120ms ease, transform 120ms ease',
-    '&:hover': {
-      transform: 'scale(1.2)',
+    body: {
+      padding: theme.spacing(0.5, 2, 1.4, 2),
+      overflowY: 'auto',
+      overflowX: 'hidden',
+      height: '100%',
+      overscrollBehavior: 'contain',
+      scrollbarWidth: 'none',
+      msOverflowStyle: 'none',
+      maskImage: 'linear-gradient(to bottom, transparent 0%, black 8%, black 92%, transparent 100%)',
+      WebkitMaskImage: 'linear-gradient(to bottom, transparent 0%, black 8%, black 92%, transparent 100%)',
+      '&::-webkit-scrollbar': {
+        display: 'none',
+        width: 0,
+        height: 0,
+      },
+      '@media (max-width:810px)': {
+        padding: theme.spacing(0.35, 1.2, 1.2, 1.2),
+      },
     },
-  },
-  colorDotActive: {
-    borderColor: 'rgba(255, 255, 255, 0.85)',
-  },
-}))
+    lines: {
+      display: 'flex',
+      flexDirection: 'column',
+      gap: theme.spacing(1.24),
+      paddingBottom: theme.spacing(1),
+    },
+    line: {
+      margin: 0,
+      fontWeight: 600,
+      lineHeight: 1.24,
+      letterSpacing: '0.01em',
+      textAlign: 'center',
+      color: isDark ? 'rgba(255, 255, 255, 0.62)' : 'rgba(0, 0, 0, 0.52)',
+      transition: `opacity ${KARAOKE_ANIMATION_MS}ms ease-in-out, color ${KARAOKE_ANIMATION_MS}ms ease-in-out, font-size 280ms ease-in-out, max-width 280ms ease-in-out`,
+    },
+    token: {
+      display: 'inline-block',
+      whiteSpace: 'pre-wrap',
+      transition: `color ${KARAOKE_ANIMATION_MS}ms ease-in-out, text-shadow ${KARAOKE_ANIMATION_MS}ms ease-in-out`,
+    },
+    settingsButton: {
+      color: textSecondary,
+      padding: 4,
+      '&:hover': {
+        color: textPrimary,
+      },
+    },
+    settingsPanel: {
+      background: isDark ? 'rgba(12, 14, 20, 0.96)' : 'rgba(255, 255, 255, 0.96)',
+      border: `1px solid ${borderSubtle}`,
+      borderRadius: 10,
+      padding: theme.spacing(1.5, 2),
+      width: 278,
+      backdropFilter: 'blur(12px)',
+    },
+    settingsHeader: {
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: theme.spacing(1),
+      marginBottom: theme.spacing(1.25),
+    },
+    settingsSection: {
+      marginBottom: theme.spacing(1.2),
+      '&:last-child': {
+        marginBottom: 0,
+      },
+    },
+    settingsTitle: {
+      fontSize: 11,
+      fontWeight: 700,
+      letterSpacing: '0.08em',
+      textTransform: 'uppercase',
+      color: isDark ? 'rgba(255, 255, 255, 0.78)' : 'rgba(0, 0, 0, 0.72)',
+    },
+    settingsLabel: {
+      fontSize: 10,
+      fontWeight: 600,
+      letterSpacing: '0.1em',
+      textTransform: 'uppercase',
+      color: isDark ? 'rgba(255, 255, 255, 0.55)' : 'rgba(0, 0, 0, 0.5)',
+      marginBottom: 4,
+    },
+    settingsRow: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: theme.spacing(1),
+    },
+    settingsSlider: {
+      flex: 1,
+      color: `rgba(${primaryRgb.join(', ')}, 0.6)`,
+      '& .MuiSlider-thumb': {
+        width: 12,
+        height: 12,
+      },
+      '& .MuiSlider-rail': {
+        opacity: 0.3,
+      },
+    },
+    settingsSliderValue: {
+      fontSize: 11,
+      color: isDark ? 'rgba(255, 255, 255, 0.5)' : 'rgba(0, 0, 0, 0.45)',
+      minWidth: 22,
+      textAlign: 'right',
+    },
+    settingsControlLabel: {
+      fontSize: 10,
+      letterSpacing: '0.06em',
+      textTransform: 'uppercase',
+      color: isDark ? 'rgba(255, 255, 255, 0.45)' : 'rgba(0, 0, 0, 0.42)',
+      minWidth: 72,
+      whiteSpace: 'nowrap',
+    },
+    resetButton: {
+      color: textSecondary,
+      padding: 4,
+      '&:hover': {
+        color: textPrimary,
+      },
+    },
+    colorDots: {
+      display: 'flex',
+      gap: 5,
+      marginTop: 4,
+    },
+    colorDot: {
+      width: 16,
+      height: 16,
+      borderRadius: '50%',
+      border: '2px solid transparent',
+      cursor: 'pointer',
+      transition: 'border-color 120ms ease, transform 120ms ease',
+      '&:hover': {
+        transform: 'scale(1.2)',
+      },
+    },
+    colorDotActive: {
+      borderColor: isDark ? 'rgba(255, 255, 255, 0.85)' : 'rgba(0, 0, 0, 0.7)',
+    },
+  })
+})
 
 const clamp = (v, min, max) => Math.max(min, Math.min(max, v))
 const lerp = (from, to, t) => from + (to - from) * t
@@ -444,6 +476,8 @@ const buildLanguageBadges = ({
   pronunciationLyric,
   showTranslation,
   showPronunciation,
+  translationEnabled,
+  pronunciationEnabled,
 }) =>
   [
     {
@@ -451,20 +485,25 @@ const buildLanguageBadges = ({
       label: 'Main',
       lang: mainLyric?.lang,
       active: true,
+      toggleable: false,
     },
-    {
+    pronunciationEnabled && {
       key: 'pr',
       label: 'PR',
       lang: pronunciationLyric?.lang,
       active: showPronunciation,
+      toggleable: true,
+      tooltip: showPronunciation ? 'Hide pronunciation' : 'Show pronunciation',
     },
-    {
+    translationEnabled && {
       key: 'tr',
       label: 'TR',
       lang: translationLyric?.lang,
       active: showTranslation,
+      toggleable: true,
+      tooltip: showTranslation ? 'Hide translation' : 'Show translation',
     },
-  ].filter((badge) => badge.lang)
+  ].filter((badge) => badge && badge.lang)
 
 const SettingsSection = ({ label, layer, settings, onChange, classes }) => {
   const s = settings[layer]
@@ -772,22 +811,20 @@ const buildTokenWipeStyle = ({
   const fillPct = clamp(fillProgress, 0, 1) * 100
   const doneColor = `rgba(${r}, ${g}, ${b}, ${clamp(highlightAlpha, TOKEN_DONE_ALPHA, TOKEN_ACTIVE_ALPHA)})`
   const futureColor = `rgba(${r}, ${g}, ${b}, ${futureAlpha})`
-  const activeShadow = `0 0 8px rgba(${r}, ${g}, ${b}, 0.34)`
 
   if (fillPct <= 0) {
     return { color: futureColor, textShadow: 'none' }
   }
 
   const edgeStart = clamp(fillPct - TOKEN_WIPE_EDGE_PCT, 0, 100)
-  const glowStop = clamp(fillPct + TOKEN_WIPE_GLOW_PCT, 0, 100)
-  const glowColor = `rgba(${r}, ${g}, ${b}, ${clamp(highlightAlpha + 0.18, TOKEN_DONE_ALPHA, TOKEN_ACTIVE_ALPHA)})`
+  const softEnd = clamp(fillPct + TOKEN_WIPE_SOFT_SPREAD_PCT, 0, 100)
   return {
     color: 'transparent',
     WebkitTextFillColor: 'transparent',
-    backgroundImage: `linear-gradient(90deg, ${doneColor} 0%, ${doneColor} ${edgeStart}%, ${glowColor} ${fillPct}%, ${futureColor} ${glowStop}%, ${futureColor} 100%)`,
+    backgroundImage: `linear-gradient(90deg, ${doneColor} 0%, ${doneColor} ${edgeStart}%, ${doneColor} ${fillPct}%, ${futureColor} ${softEnd}%, ${futureColor} 100%)`,
     backgroundClip: 'text',
     WebkitBackgroundClip: 'text',
-    textShadow: activeShadow,
+    textShadow: 'none',
   }
 }
 
@@ -827,17 +864,17 @@ const KaraokeLineRow = memo(
 
           const progress =
             isDone ||
-            tokenStart == null ||
-            tokenEnd == null ||
-            tokenEnd <= tokenStart
+              tokenStart == null ||
+              tokenEnd == null ||
+              tokenEnd <= tokenStart
               ? isDone
                 ? 1
                 : 0
               : clamp(
-                  (renderPlaybackMs - tokenStart) / (tokenEnd - tokenStart),
-                  0,
-                  1,
-                )
+                (renderPlaybackMs - tokenStart) / (tokenEnd - tokenStart),
+                0,
+                1,
+              )
 
           const justEnded =
             tokenEnd != null &&
@@ -847,10 +884,10 @@ const KaraokeLineRow = memo(
           const settleProgress =
             justEnded && tokenEnd != null
               ? clamp(
-                  (renderPlaybackMs - tokenEnd) / KARAOKE_WORD_SETTLE_MS,
-                  0,
-                  1,
-                )
+                (renderPlaybackMs - tokenEnd) / KARAOKE_WORD_SETTLE_MS,
+                0,
+                1,
+              )
               : 0
 
           let alpha = TOKEN_FUTURE_ALPHA
@@ -935,6 +972,8 @@ const KaraokeLyricsOverlay = ({
   onClose,
 }) => {
   const classes = useStyles()
+  const theme = useTheme()
+  const isDark = theme.palette.type === 'dark'
   const [playbackMs, setPlaybackMs] = useState(0)
   const [maxHeightPx, setMaxHeightPx] = useState(getMaxHeightPx())
   const [bodyViewportHeight, setBodyViewportHeight] = useState(0)
@@ -950,10 +989,10 @@ const KaraokeLyricsOverlay = ({
   }, [])
 
   const handleResetAppearance = useCallback(() => {
-    const defaults = createDefaultLyricsSettings()
+    const defaults = createDefaultLyricsSettings(isDark)
     setLyricsSettings(defaults)
     saveLyricsSettings(defaults)
-  }, [])
+  }, [isDark])
 
   const bodyRef = useRef(null)
   const activeLineRef = useRef(null)
@@ -984,6 +1023,23 @@ const KaraokeLyricsOverlay = ({
     window.addEventListener('resize', onResize)
     return () => window.removeEventListener('resize', onResize)
   }, [])
+
+  useEffect(() => {
+    setLyricsSettings((prev) => {
+      const currentColor = prev.main.colorKey
+      const shouldSwap =
+        (isDark && currentColor === 'black') ||
+        (!isDark && currentColor === 'white')
+      if (!shouldSwap) return prev
+      const newColorKey = isDark ? 'white' : 'black'
+      const updated = {
+        ...prev,
+        main: { ...prev.main, colorKey: newColorKey },
+      }
+      saveLyricsSettings(updated)
+      return updated
+    })
+  }, [isDark])
 
   useEffect(() => {
     const body = bodyRef.current
@@ -1166,6 +1222,8 @@ const KaraokeLyricsOverlay = ({
     pronunciationLyric,
     showTranslation,
     showPronunciation,
+    translationEnabled,
+    pronunciationEnabled,
   })
 
   const trByMainIndex = useMemo(() => {
@@ -1212,7 +1270,10 @@ const KaraokeLyricsOverlay = ({
       return
     }
 
-    const rafId = window.requestAnimationFrame(() => {
+    let animFrameId = null
+    let scrollAnimId = null
+
+    animFrameId = window.requestAnimationFrame(() => {
       const body = bodyRef.current
       const activeNode = activeLineRef.current
       if (!body || !activeNode) {
@@ -1226,23 +1287,36 @@ const KaraokeLyricsOverlay = ({
         bodyRect.top -
         (body.clientHeight - activeRect.height) / 2
       const maxTop = Math.max(0, body.scrollHeight - body.clientHeight)
-      const centeredTop = clamp(body.scrollTop + deltaWithinBody, 0, maxTop)
+      const targetTop = clamp(body.scrollTop + deltaWithinBody, 0, maxTop)
+      const distance = targetTop - body.scrollTop
 
-      if (Math.abs(body.scrollTop - centeredTop) < 2) {
+      if (Math.abs(distance) < 2) {
         return
       }
 
-      if (typeof body.scrollTo === 'function') {
-        body.scrollTo({
-          top: centeredTop,
-          behavior: 'smooth',
-        })
-      } else {
-        body.scrollTop = centeredTop
+      const startTop = body.scrollTop
+      const duration = 400
+      const startTime = performance.now()
+
+      const easeOutCubic = (t) => 1 - Math.pow(1 - t, 3)
+
+      const step = (now) => {
+        const elapsed = now - startTime
+        const progress = Math.min(elapsed / duration, 1)
+        const eased = easeOutCubic(progress)
+        body.scrollTop = startTop + distance * eased
+        if (progress < 1) {
+          scrollAnimId = window.requestAnimationFrame(step)
+        }
       }
+
+      scrollAnimId = window.requestAnimationFrame(step)
     })
 
-    return () => window.cancelAnimationFrame(rafId)
+    return () => {
+      if (animFrameId) window.cancelAnimationFrame(animFrameId)
+      if (scrollAnimId) window.cancelAnimationFrame(scrollAnimId)
+    }
   }, [
     centerSpacerPx,
     hasTimedMainLines,
@@ -1306,10 +1380,11 @@ const KaraokeLyricsOverlay = ({
     const [r, g, b] = parseColorRGB(
       getColorValue(lyricsSettings[layerKey].colorKey),
     )
+    const baseFontSize = lyricsSettings[layerKey].fontSize
     if (!hasTimedMainLines) {
       return {
         opacity: 0.94,
-        fontSize: lyricsSettings[layerKey].fontSize,
+        fontSize: baseFontSize,
         color: `rgba(${r}, ${g}, ${b}, 0.94)`,
         lineHeight: KARAOKE_AUX_LINE_HEIGHT,
       }
@@ -1335,20 +1410,27 @@ const KaraokeLyricsOverlay = ({
       opacity = Math.max(0.22, 0.5 - level * 0.08)
     }
 
+    const fontSize = isActive
+      ? baseFontSize
+      : Math.round(baseFontSize * KARAOKE_AUX_INACTIVE_FONT_FACTOR)
+
     return {
       opacity,
-      fontSize: lyricsSettings[layerKey].fontSize,
+      fontSize,
       color,
       lineHeight: KARAOKE_AUX_LINE_HEIGHT,
+      maxWidth: isActive
+        ? '100%'
+        : `${Math.round(KARAOKE_AUX_INACTIVE_FONT_FACTOR * 100)}%`,
     }
   }
 
   const overlayStyle = isCompact
     ? undefined
     : {
-        height: overlayHeight,
-        maxHeight: maxHeightPx,
-      }
+      height: overlayHeight,
+      maxHeight: maxHeightPx,
+    }
 
   return (
     <div
@@ -1365,52 +1447,49 @@ const KaraokeLyricsOverlay = ({
       <div className={classes.header}>
         <div className={classes.headerLeft}>
           <div className={classes.languageBadges}>
-            {languageBadges.map((badge) => (
-              <div
-                key={badge.key}
-                className={clsx(classes.languageBadge, {
-                  [classes.languageBadgeActive]: badge.active,
-                })}
-                data-testid={`lyrics-language-badge-${badge.key}`}
-              >
-                <span className={classes.languageBadgeLabel}>
-                  {badge.label}
-                </span>
-                <span className={classes.languageBadgeValue}>{badge.lang}</span>
-              </div>
-            ))}
-          </div>
-          <div className={classes.layerControls}>
-            <Tooltip title="Toggle translations">
-              <span>
-                <Button
-                  size="small"
-                  onClick={onToggleTranslation}
-                  disabled={!translationEnabled}
-                  className={clsx(classes.layerToggle, {
-                    [classes.layerToggleActive]: showTranslation,
+            {languageBadges.map((badge) => {
+              const badgeEl = (
+                <div
+                  key={badge.key}
+                  className={clsx(classes.languageBadge, {
+                    [classes.languageBadgeActive]: badge.active,
+                    [classes.languageBadgeToggle]: badge.toggleable,
                   })}
-                  data-testid="lyrics-toggle-translation"
+                  data-testid={`lyrics-language-badge-${badge.key}`}
+                  role={badge.toggleable ? 'button' : undefined}
+                  tabIndex={badge.toggleable ? 0 : undefined}
+                  onClick={
+                    badge.toggleable
+                      ? badge.key === 'tr'
+                        ? onToggleTranslation
+                        : onTogglePronunciation
+                      : undefined
+                  }
+                  onKeyDown={
+                    badge.toggleable
+                      ? (e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault()
+                            ; (badge.key === 'tr'
+                              ? onToggleTranslation
+                              : onTogglePronunciation)()
+                        }
+                      }
+                      : undefined
+                  }
                 >
-                  TR
-                </Button>
-              </span>
-            </Tooltip>
-            <Tooltip title="Toggle pronunciations">
-              <span>
-                <Button
-                  size="small"
-                  onClick={onTogglePronunciation}
-                  disabled={!pronunciationEnabled}
-                  className={clsx(classes.layerToggle, {
-                    [classes.layerToggleActive]: showPronunciation,
-                  })}
-                  data-testid="lyrics-toggle-pronunciation"
-                >
-                  PR
-                </Button>
-              </span>
-            </Tooltip>
+                  <span className={classes.languageBadgeLabel}>
+                    {badge.label}
+                  </span>
+                  <span className={classes.languageBadgeValue}>{badge.lang}</span>
+                </div>
+              )
+              return badge.toggleable ? (
+                <Tooltip key={badge.key} title={badge.tooltip}>
+                  {badgeEl}
+                </Tooltip>
+              ) : badgeEl
+            })}
           </div>
         </div>
 
@@ -1431,83 +1510,90 @@ const KaraokeLyricsOverlay = ({
         </div>
       </div>
 
-      <div className={classes.body} ref={bodyRef}>
-        <div className={classes.lines} style={{ gap: lineGap }}>
-          <div aria-hidden style={{ height: centerSpacerPx }} />
-          {mainLines.map((line, idx) => {
-            const trLine = trByMainIndex[idx]
-            const prLine = prByMainIndex[idx]
-            const mainNextLineStart = mainLines[idx + 1]?.start ?? null
-            const highlightedMainLine = buildHighlightedMainLine(
-              line,
-              mainNextLineStart,
-            )
-            const highlightedTrLine = buildHighlightedAuxLine(
-              line,
-              trLine,
-              mainNextLineStart,
-            )
-            const highlightedPrLine = buildHighlightedAuxLine(
-              line,
-              prLine,
-              mainNextLineStart,
-            )
-            const showTr = shouldShowAuxLine(line, trLine)
-            const showPr = shouldShowAuxLine(line, prLine)
-            const lineStyle = getMainLineStyle(idx)
-            const trStyle = getAuxLineStyle(idx, 'tr')
-            const prStyle = getAuxLineStyle(idx, 'pr')
-            return (
-              <div
-                key={`line-${line.index}-${line.start ?? idx}`}
-                ref={
-                  idx === activeIndex && hasTimedMainLines
-                    ? activeLineRef
-                    : null
-                }
-                className={classes.lineGroup}
-                style={{ cursor: line.start != null ? 'pointer' : undefined }}
-                onClick={() => {
-                  if (audioInstance && line.start != null) {
-                    audioInstance.currentTime = line.start / 1000
-                  }
-                }}
-              >
-                <KaraokeLineRow
-                  line={highlightedMainLine}
-                  nextLineStart={mainNextLineStart}
-                  renderPlaybackMs={renderPlaybackMs}
-                  className={classes.line}
-                  style={lineStyle}
-                  tokenClassName={classes.token}
-                  highlightTokens={hasTimedMainLines}
-                />
-                {showPr && (
-                  <KaraokeLineRow
-                    line={highlightedPrLine}
-                    nextLineStart={null}
-                    renderPlaybackMs={renderPlaybackMs}
-                    className={classes.inlinePr}
-                    style={prStyle}
-                    tokenClassName={classes.token}
-                    highlightTokens={hasTimedMainLines}
-                  />
-                )}
-                {showTr && (
-                  <KaraokeLineRow
-                    line={highlightedTrLine}
-                    nextLineStart={null}
-                    renderPlaybackMs={renderPlaybackMs}
-                    className={classes.inlineTr}
-                    style={trStyle}
-                    tokenClassName={classes.token}
-                    highlightTokens={hasTimedMainLines}
-                  />
-                )}
-              </div>
-            )
+      <div className={classes.bodyWrapper}>
+        <div
+          className={clsx(classes.body, {
+            [classes.bodyInline]: inline,
           })}
-          <div aria-hidden style={{ height: centerSpacerPx }} />
+          ref={bodyRef}
+        >
+          <div className={classes.lines} style={{ gap: lineGap }}>
+            <div aria-hidden style={{ height: centerSpacerPx }} />
+            {mainLines.map((line, idx) => {
+              const trLine = trByMainIndex[idx]
+              const prLine = prByMainIndex[idx]
+              const mainNextLineStart = mainLines[idx + 1]?.start ?? null
+              const highlightedMainLine = buildHighlightedMainLine(
+                line,
+                mainNextLineStart,
+              )
+              const highlightedTrLine = buildHighlightedAuxLine(
+                line,
+                trLine,
+                mainNextLineStart,
+              )
+              const highlightedPrLine = buildHighlightedAuxLine(
+                line,
+                prLine,
+                mainNextLineStart,
+              )
+              const showTr = shouldShowAuxLine(line, trLine)
+              const showPr = shouldShowAuxLine(line, prLine)
+              const lineStyle = getMainLineStyle(idx)
+              const trStyle = getAuxLineStyle(idx, 'tr')
+              const prStyle = getAuxLineStyle(idx, 'pr')
+              return (
+                <div
+                  key={`line-${line.index}-${line.start ?? idx}`}
+                  ref={
+                    idx === activeIndex && hasTimedMainLines
+                      ? activeLineRef
+                      : null
+                  }
+                  className={classes.lineGroup}
+                  style={{ cursor: line.start != null ? 'pointer' : undefined }}
+                  onClick={() => {
+                    if (audioInstance && line.start != null) {
+                      audioInstance.currentTime = line.start / 1000
+                    }
+                  }}
+                >
+                  <KaraokeLineRow
+                    line={highlightedMainLine}
+                    nextLineStart={mainNextLineStart}
+                    renderPlaybackMs={renderPlaybackMs}
+                    className={classes.line}
+                    style={lineStyle}
+                    tokenClassName={classes.token}
+                    highlightTokens={hasTimedMainLines}
+                  />
+                  {showPr && (
+                    <KaraokeLineRow
+                      line={highlightedPrLine}
+                      nextLineStart={null}
+                      renderPlaybackMs={renderPlaybackMs}
+                      className={classes.inlinePr}
+                      style={prStyle}
+                      tokenClassName={classes.token}
+                      highlightTokens={hasTimedMainLines}
+                    />
+                  )}
+                  {showTr && (
+                    <KaraokeLineRow
+                      line={highlightedTrLine}
+                      nextLineStart={null}
+                      renderPlaybackMs={renderPlaybackMs}
+                      className={classes.inlineTr}
+                      style={trStyle}
+                      tokenClassName={classes.token}
+                      highlightTokens={hasTimedMainLines}
+                    />
+                  )}
+                </div>
+              )
+            })}
+            <div aria-hidden style={{ height: centerSpacerPx }} />
+          </div>
         </div>
       </div>
     </div>
