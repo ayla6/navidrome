@@ -382,7 +382,7 @@ export const buildKaraokeLinesFromCueLines = (
   return Array.from(byIndex.entries()).map(([index, group]) => {
     const first = group[0]
     const baseLine = baseLines[index] || {}
-    const tokens = sortTokensByStart(group.flatMap((cueLine) => cueLine.tokens))
+    const tokens = group.flatMap((cueLine) => cueLine.tokens)
     const fallbackStart =
       tokens.find((token) => token.start != null)?.start ?? null
     const fallbackEnd =

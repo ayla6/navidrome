@@ -1513,7 +1513,7 @@ const KaraokeLyricsOverlay = ({
       <div className={classes.bodyWrapper}>
         <div
           className={clsx(classes.body, {
-            [classes.bodyInline]: inline,
+            [classes.bodyInline]: "inline",
           })}
           ref={bodyRef}
         >
